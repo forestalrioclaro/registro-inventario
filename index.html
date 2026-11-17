@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registro de Inventario</title>
+<style>
+  :root { --azul:#1f4e79; --gris:#f3f5f7; --borde:#cfd6dd; --verde:#2e7d32; --rojo:#b71c1c; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--gris); color:#1b1b1b; }
+  header { background:var(--azul); color:#fff; padding:12px 16px; }
+  header h1 { margin:0 0 8px; font-size:20px; }
+  nav { display:flex; flex-wrap:wrap; gap:6px; }
+  nav button { background:transparent; color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:6px; padding:6px 10px; cursor:pointer; font-size:14px; }
+  nav button.activo { background:#fff; color:var(--azul); font-weight:600; }
+  main { padding:16px; max-width:1100px; margin:0 auto; }
+  .card { background:#fff; border:1px solid var(--borde); border-radius:8px; padding:16px; margin-bottom:16px; }
+  .card h2 { margin:0 0 12px; font-size:18px; color:var(--azul); }
+  .card h3 { margin:18px 0 8px; font-size:15px; color:#333; }
+  .grid-cab { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:12px; }
+  .grid-trab { display:grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap:8px; margin-top:8px; }
+  .grid-linea { display:grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap:12px; }
+  .ancho { grid-column: 1 / -1; }
+  label { display:flex; flex-direction:column; font-size:13px; color:#444; gap:4px; }
+  input, textarea, select { font-size:15px; padding:8px; border:1px solid var(--borde); border-radius:6px; width:100%; background:#fff; }
+  textarea { resize:vertical; }
+  details summary { cursor:pointer; font-weight:600; color:#333; margin-top:12px; }
+  .acciones { display:flex; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap; }
+  button.primario { background:var(--azul); color:#fff; border:0; border-radius:6px; padding:10px 18px; font-size:15px; cursor:pointer; }
+  button.primario:disabled { opacity:.6; cursor:wait; }
+  .msg-ok { color:var(--verde); font-weight:600; }
+  .msg-error { color:var(--rojo); font-weight:600; }
+  .aviso { background:#fff3cd; border:1px solid #e0c36b; border-radius:6px; padding:10px; margin-bottom:12px; }
+  .tabla-wrap { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th, td { border-bottom:1px solid var(--borde); padding:6px 8px; text-align:left; white-space:nowrap; }
+  th { background:var(--gris); }
+  td.comentario { white-space:normal; min-width:160px; }
+  .solo-mantenedor textarea { min-height:90px; font-family:inherit; }
+  .fila-clave { display:flex; gap:8px; align-items:flex-end; max-width:420px; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Registro de Inventario</h1>
+  <nav id="nav"></nav>
+</header>
+
+<main>
+  <div id="aviso" class="aviso" hidden></div>
+  <div id="contenedor-vistas"></div>
+
+  <section id="vista-mantenedor" class="card" hidden>
+    <h2>Mantenedor</h2>
+    <div id="mant-login">
+      <div class="fila-clave">
+        <label style="flex:1">Clave del mantenedor<input type="password" id="mant-clave" autocomplete="off"></label>
+        <button class="primario" id="mant-entrar">Entrar</button>
+      </div>
+      <p id="mant-login-msg" class="msg-error"></p>
+    </div>
+    <div id="mant-editor" class="solo-mantenedor" hidden>
+      <p>Escribe un valor por línea. Al guardar, reemplaza la lista completa.</p>
+      <div class="grid-cab">
+        <label>Jefes de área<textarea id="m-jefes"></textarea></label>
+        <label>Productos<textarea id="m-productos"></textarea></label>
+        <label>Clases<textarea id="m-clases"></textarea></label>
+        <label>Largos<textarea id="m-largos"></textarea></label>
+        <label>Diámetro RCC<textarea id="m-diamRCC"></textarea></label>
+        <label>Diámetro RC-RCI<textarea id="m-diamRC"></textarea></label>
+        <label>Diámetro RD-RDI<textarea id="m-diamRD"></textarea></label>
+        <label>Nivel de secado<textarea id="m-secado"></textarea></label>
+      </div>
+      <div class="acciones">
+        <button class="primario" id="mant-guardar">Guardar mantenedor</button>
+        <span id="mant-msg"></span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Listas compartidas por todas las vistas. Se llenan desde el Mantenedor. -->
+<datalist id="dl-jefes"></datalist>
+<datalist id="dl-productos"></datalist>
+<datalist id="dl-clases"></datalist>
+<datalist id="dl-largos"></datalist>
+<datalist id="dl-diam"></datalist>
+<datalist id="dl-secado"></datalist>
+
+<script>
+/* ==== CONFIGURACION ==== */
+var APPS_SCRIPT_URL = 'PEGAR_AQUI_LA_URL_DEL_WEB_APP';
+
+var VISTAS = [
+  { id: 'impregnacion', nombre: 'Impregnación' },
+  { id: 'polineras',    nombre: 'Polineras' },
+  { id: 'postes',       nombre: 'Postes' },
+  { id: 'morbark',      nombre: 'Morbark / Cilindrado' }
+];
+
+var TRABAJADORES_MAX = 10;
+var CAMPOS_LINEA = ['producto','clase','largo','diametro','secado','produccion','recuperacion','rechazo','sector','comentario'];
+// Columnas de la hoja Registros que se muestran en la tabla
+var COLUMNAS_TABLA = [
+  { idx: 2, nombre: 'Fecha' }, { idx: 3, nombre: 'Jefe' }, { idx: 14, nombre: 'Producto' },
+  { idx: 15, nombre: 'Clase' }, { idx: 16, nombre: 'Largo' }, { idx: 17, nombre: 'Diámetro' },
+  { idx: 18, nombre: 'Producción' }, { idx: 19, nombre: 'Recuperación' }, { idx: 20, nombre: 'Rechazo' },
+  { idx: 21, nombre: 'Secado' }, { idx: 22, nombre: 'Sector' }, { idx: 23, nombre: 'Comentario' }
+];
+
+var LISTAS = { jefes:[], productos:[], clases:[], largos:[], diamRCC:[], diamRC:[], diamRD:[], secado:[] };
+var claveActual = '';
+
+/* ==== UTILIDADES ==== */
+function $(id) { return document.getElementById(id); }
+
+function esc(s) {
+  return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+  });
+}
+
+function hoyISO() {
+  var d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 10);
+}
+
+function mostrarAviso(texto) { var a = $('aviso'); a.textContent = texto; a.hidden = !texto; }
+
+function llenarDatalist(id, valores) {
+  $(id).innerHTML = valores.map(function (v) { return '<option value="' + esc(v) + '"></option>'; }).join('');
+}
+
+function diamOpciones(producto) {
+  var p = (producto || '').trim().toUpperCase();
+  if (p === 'RCC') return LISTAS.diamRCC;
+  if (p === 'RC' || p === 'RCI') return LISTAS.diamRC;
+  if (p === 'RD' || p === 'RDI') return LISTAS.diamRD;
+  return [].concat(LISTAS.diamRCC, LISTAS.diamRC, LISTAS.diamRD).filter(function (v, i, a) { return a.indexOf(v) === i; });
+}
+
+function llamarGet(params) {
+  var partes = [];
+  Object.keys(params).forEach(function (k) {
+    partes.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
+  });
+  return fetch(APPS_SCRIPT_URL + '?' + partes.join('&')).then(function (r) { return r.json(); });
+}
+
+function llamarPost(cuerpo) {
+  return fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(cuerpo)
+  }).then(function (r) { return r.json(); });
+}
+
+/* ==== CARGA DE LISTAS ==== */
+function refrescarDatalists() {
+  llenarDatalist('dl-jefes', LISTAS.jefes);
+  llenarDatalist('dl-productos', LISTAS.productos);
+  llenarDatalist('dl-clases', LISTAS.clases);
+  llenarDatalist('dl-largos', LISTAS.largos);
+  llenarDatalist('dl-secado', LISTAS.secado);
+  llenarDatalist('dl-diam', [].concat(LISTAS.diamRCC, LISTAS.diamRC, LISTAS.diamRD));
+}
+
+function cargarListas() {
+  return llamarGet({ action: 'lists' }).then(function (datos) {
+    if (!datos.ok) throw new Error(datos.error || 'No se pudieron cargar las listas');
+    LISTAS = datos;
+    refrescarDatalists();
+    VISTAS.forEach(function (v) { actualizarDiam(v.id); });
+  });
+}
+
+/* ==== VISTAS DE REGISTRO ==== */
+function htmlVista(v) {
+  var p = v.id + '-';
+  var trab = '';
+  for (var i = 0; i < TRABAJADORES_MAX; i++) {
+    var num = (i + 1 < 10 ? '0' : '') + (i + 1);
+    trab += '<input id="' + p + 't' + i + '" placeholder="Trabajador ' + num + '">';
+  }
+  return '' +
+  '<section id="vista-' + v.id + '" class="card" hidden>' +
+  '  <h2>' + esc(v.nombre) + '</h2>' +
+  '  <div class="grid-cab">' +
+  '    <label>Fecha<input type="date" id="' + p + 'fecha"></label>' +
+  '    <label>Jefe de área<input list="dl-jefes" id="' + p + 'jefe" placeholder="Escribe o elige"></label>' +
+  '  </div>' +
+  '  <details>' +
+  '    <summary>Trabajadores que ayudaron a contar (ISO)</summary>' +
+  '    <div class="grid-trab">' + trab + '</div>' +
+  '  </details>' +
+  '  <h3>Línea de conteo</h3>' +
+  '  <div class="grid-linea">' +
+  '    <label>Producto<input list="dl-productos" id="' + p + 'producto" autocomplete="off"></label>' +
+  '    <label>Clase<input list="dl-clases" id="' + p + 'clase" autocomplete="off"></label>' +
+  '    <label>Largo<input list="dl-largos" id="' + p + 'largo" autocomplete="off"></label>' +
+  '    <label>Diámetro<input list="dl-diam" id="' + p + 'diametro" autocomplete="off"></label>' +
+  '    <label>Nivel de secado<input list="dl-secado" id="' + p + 'secado" autocomplete="off"></label>' +
+  '    <label>Unidades producción<input type="number" min="0" step="1" id="' + p + 'produccion"></label>' +
+  '    <label>Unidades recuperación<input type="number" min="0" step="1" id="' + p + 'recuperacion"></label>' +
+  '    <label>Unidades rechazo<input type="number" min="0" step="1" id="' + p + 'rechazo"></label>' +
+  '    <label class="ancho">Sector<input id="' + p + 'sector" placeholder="Ej: al lado del rojo, frente a la Morbark 2, esquina del canal"></label>' +
+  '    <label class="ancho">Comentario<textarea id="' + p + 'comentario" rows="2"></textarea></label>' +
+  '  </div>' +
+  '  <div class="acciones">' +
+  '    <button class="primario" id="' + p + 'btn">Guardar registro</button>' +
+  '    <span id="' + p + 'msg"></span>' +
+  '  </div>' +
+  '  <h3>Últimos registros de esta vista</h3>' +
+  '  <div class="tabla-wrap"><table id="' + p + 'tabla"></table></div>' +
+  '</section>';
+}
+
+function valor(id) { return ($(id).value || '').trim(); }
+
+function actualizarDiam(vistaId) {
+  var dlId = 'dl-diam-' + vistaId;
+  var previo = $(dlId);
+  if (previo) previo.remove();
+  var dl = document.createElement('datalist');
+  dl.id = dlId;
+  dl.innerHTML = diamOpciones(valor(vistaId + '-producto')).map(function (o) {
+    return '<option value="' + esc(o) + '"></option>';
+  }).join('');
+  document.body.appendChild(dl);
+  $(vistaId + '-diametro').setAttribute('list', dlId);
+}
+
+function limpiarLinea(vistaId) {
+  CAMPOS_LINEA.forEach(function (c) { $(vistaId + '-' + c).value = ''; });
+  actualizarDiam(vistaId);
+}
+
+function leerRegistro(v) {
+  var p = v.id + '-';
+  var trabajadores = [];
+  for (var i = 0; i < TRABAJADORES_MAX; i++) {
+    var t = valor(p + 't' + i);
+    if (t) trabajadores.push(t);
+  }
+  return {
+    vista: v.nombre,
+    fecha: valor(p + 'fecha'),
+    jefe: valor(p + 'jefe'),
+    trabajadores: trabajadores,
+    producto: valor(p + 'producto'),
+    clase: valor(p + 'clase'),
+    largo: valor(p + 'largo'),
+    diametro: valor(p + 'diametro'),
+    secado: valor(p + 'secado'),
+    produccion: valor(p + 'produccion'),
+    recuperacion: valor(p + 'recuperacion'),
+    rechazo: valor(p + 'rechazo'),
+    sector: valor(p + 'sector'),
+    comentario: valor(p + 'comentario')
+  };
+}
+
+function guardarRegistro(v) {
+  var p = v.id + '-';
+  var btn = $(p + 'btn'), msg = $(p + 'msg');
+  var datos = leerRegistro(v);
+  msg.className = ''; msg.textContent = '';
+  btn.disabled = true;
+  llamarPost({ action: 'registrar', data: datos }).then(function (r) {
+    if (!r.ok) throw new Error(r.error);
+    msg.className = 'msg-ok';
+    msg.textContent = 'Guardado. Puedes ingresar la siguiente línea.';
+    limpiarLinea(v.id);
+    cargarRecientes(v);
+  }).catch(function (e) {
+    msg.className = 'msg-error';
+    msg.textContent = 'No se guardó: ' + e.message;
+  }).then(function () {
+    btn.disabled = false;
+  });
+}
+
+function cargarRecientes(v) {
+  var tabla = $(v.id + '-tabla');
+  llamarGet({ action: 'recientes', vista: v.nombre }).then(function (r) {
+    if (!r.ok) throw new Error(r.error);
+    var cab = COLUMNAS_TABLA.map(function (c) { return '<th>' + esc(c.nombre) + '</th>'; }).join('');
+    var filas = r.rows.map(function (f) {
+      return '<tr>' + COLUMNAS_TABLA.map(function (c) {
+        var val = f[c.idx];
+        if (c.idx === 2 && val) val = String(val).slice(0, 10);
+        var clase = c.idx === 23 ? ' class="comentario"' : '';
+        return '<td' + clase + '>' + esc(val) + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+    tabla.innerHTML = '<thead><tr>' + cab + '</tr></thead><tbody>' +
+      (filas || '<tr><td>Sin registros aún</td></tr>') + '</tbody>';
+  }).catch(function (e) {
+    tabla.innerHTML = '<tr><td class="msg-error">No se pudieron cargar los registros: ' + esc(e.message) + '</td></tr>';
+  });
+}
+
+function montarVistas() {
+  $('contenedor-vistas').innerHTML = VISTAS.map(htmlVista).join('');
+  VISTAS.forEach(function (v) {
+    var p = v.id + '-';
+    $(p + 'fecha').value = hoyISO();
+    $(p + 'producto').addEventListener('input', function () { actualizarDiam(v.id); });
+    $(p + 'producto').addEventListener('change', function () { actualizarDiam(v.id); });
+    $(p + 'btn').addEventListener('click', function () { guardarRegistro(v); });
+  });
+}
+
+/* ==== NAVEGACION ==== */
+var SECCIONES = VISTAS.map(function (v) { return { id: 'vista-' + v.id, nombre: v.nombre }; });
+SECCIONES.push({ id: 'vista-mantenedor', nombre: 'Mantenedor' });
+
+function mostrarSeccion(id) {
+  SECCIONES.forEach(function (s) {
+    $(s.id).hidden = s.id !== id;
+    var b = document.querySelector('[data-sec="' + s.id + '"]');
+    if (b) b.classList.toggle('activo', s.id === id);
+  });
+  var v = VISTAS.filter(function (x) { return 'vista-' + x.id === id; })[0];
+  if (v) cargarRecientes(v);
+}
+
+function montarNav() {
+  $('nav').innerHTML = SECCIONES.map(function (s) {
+    return '<button data-sec="' + s.id + '">' + esc(s.nombre) + '</button>';
+  }).join('');
+  $('nav').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-sec]');
+    if (b) mostrarSeccion(b.getAttribute('data-sec'));
+  });
+}
+
+/* ==== MANTENEDOR ==== */
+var CAMPOS_MANT = [
+  ['m-jefes','jefes'], ['m-productos','productos'], ['m-clases','clases'], ['m-largos','largos'],
+  ['m-diamRCC','diamRCC'], ['m-diamRC','diamRC'], ['m-diamRD','diamRD'], ['m-secado','secado']
+];
+
+function cargarEditorMantenedor() {
+  CAMPOS_MANT.forEach(function (par) { $(par[0]).value = (LISTAS[par[1]] || []).join('\n'); });
+}
+
+function entrarMantenedor() {
+  var clave = $('mant-clave').value;
+  $('mant-login-msg').textContent = '';
+  llamarPost({ action: 'verificarClave', clave: clave }).then(function (r) {
+    if (!r.ok) { $('mant-login-msg').textContent = 'Clave incorrecta.'; return; }
+    claveActual = clave;
+    $('mant-login').hidden = true;
+    $('mant-editor').hidden = false;
+    cargarEditorMantenedor();
+  }).catch(function (e) {
+    $('mant-login-msg').textContent = 'Error de conexión: ' + e.message;
+  });
+}
+
+function guardarMantenedor() {
+  var listas = {};
+  CAMPOS_MANT.forEach(function (par) {
+    listas[par[1]] = $(par[0]).value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+  });
+  var msg = $('mant-msg');
+  $('mant-guardar').disabled = true;
+  msg.className = ''; msg.textContent = 'Guardando...';
+  llamarPost({ action: 'guardarMantenedor', clave: claveActual, listas: listas }).then(function (r) {
+    if (!r.ok) throw new Error(r.error);
+    return cargarListas().then(function () {
+      msg.className = 'msg-ok'; msg.textContent = 'Mantenedor guardado.';
+    });
+  }).catch(function (e) {
+    msg.className = 'msg-error'; msg.textContent = 'No se guardó: ' + e.message;
+  }).then(function () {
+    $('mant-guardar').disabled = false;
+  });
+}
+
+/* ==== INICIO ==== */
+function iniciar() {
+  montarNav();
+  montarVistas();
+  $('mant-entrar').addEventListener('click', entrarMantenedor);
+  $('mant-clave').addEventListener('keydown', function (e) { if (e.key === 'Enter') entrarMantenedor(); });
+  $('mant-guardar').addEventListener('click', guardarMantenedor);
+
+  if (APPS_SCRIPT_URL.indexOf('PEGAR') === 0) {
+    mostrarAviso('Falta configurar APPS_SCRIPT_URL en index.html.');
+  }
+  cargarListas().catch(function (e) {
+    mostrarAviso('No se pudieron cargar las listas del mantenedor: ' + e.message);
+  }).then(function () {
+    mostrarSeccion('vista-' + VISTAS[0].id);
+  });
+}
+
+iniciar();
+</script>
+</body>
+</html>
