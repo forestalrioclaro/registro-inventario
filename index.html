@@ -3,101 +3,116 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Registro de Inventario</title>
+<title>Registro de Inventario · Río Claro</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700;900&family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
-  :root { --azul:#1f4e79; --gris:#f3f5f7; --borde:#cfd6dd; --verde:#2e7d32; --rojo:#b71c1c; }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--gris); color:#1b1b1b; font-size:14px; }
-  header { background:var(--azul); color:#fff; padding:10px 14px; }
-  header h1 { margin:0 0 8px; font-size:18px; }
-  nav { display:flex; flex-wrap:wrap; gap:6px; }
-  nav button { background:transparent; color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:6px; padding:5px 10px; cursor:pointer; font-size:13px; }
-  nav button.activo { background:#fff; color:var(--azul); font-weight:600; }
-  main { padding:12px; max-width:1300px; margin:0 auto; }
-  .card { background:#fff; border:1px solid var(--borde); border-radius:8px; padding:12px; margin-bottom:12px; }
-  .card h2 { margin:0 0 10px; font-size:17px; color:var(--azul); }
-  .card h3 { margin:14px 0 6px; font-size:14px; color:#333; }
-  .cabecera { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
-  .cabecera label { display:flex; flex-direction:column; font-size:12px; color:#444; gap:3px; }
-  .cabecera input { font-size:14px; padding:6px; border:1px solid var(--borde); border-radius:5px; width:200px; }
-  details summary { cursor:pointer; font-weight:600; color:#333; margin-top:10px; }
-  .grid-trab { display:grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap:6px; margin-top:6px; }
-  .grid-trab input { font-size:13px; padding:5px; border:1px solid var(--borde); border-radius:5px; width:100%; }
-  .tabla-wrap { overflow-x:auto; }
-  table { border-collapse:collapse; width:100%; font-size:13px; }
-  th, td { border:1px solid var(--borde); padding:2px 4px; text-align:left; white-space:nowrap; }
-  th { background:var(--gris); font-weight:600; padding:5px 4px; }
-  td.num { text-align:center; color:#666; background:#fafafa; width:34px; }
-  td input { width:100%; min-width:70px; font-size:13px; padding:4px 5px; border:1px solid transparent; border-radius:3px; background:#fff; }
-  td input:focus { border-color:var(--azul); outline:none; background:#f5f9ff; }
-  td input.c-sector, td input.c-comentario { min-width:180px; }
-  td input.c-producto, td input.c-clase { min-width:90px; }
-  td input.c-diametro { min-width:100px; }
-  td input[type=number] { min-width:70px; }
-  .historial td, .historial th { white-space:nowrap; }
-  td.comentario { white-space:normal; min-width:160px; }
-  .acciones { display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
-  button.primario { background:var(--azul); color:#fff; border:0; border-radius:6px; padding:8px 16px; font-size:14px; cursor:pointer; }
-  button.primario:disabled { opacity:.6; cursor:wait; }
-  button.secundario { background:#fff; color:var(--azul); border:1px solid var(--azul); border-radius:6px; padding:6px 12px; font-size:13px; cursor:pointer; }
-  .msg-ok { color:var(--verde); font-weight:600; }
-  .msg-error { color:var(--rojo); font-weight:600; }
-  .aviso { background:#fff3cd; border:1px solid #e0c36b; border-radius:6px; padding:8px; margin-bottom:10px; }
-  .solo-mantenedor textarea { min-height:90px; font-family:inherit; width:100%; font-size:13px; padding:6px; border:1px solid var(--borde); border-radius:5px; }
-  .solo-mantenedor label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:#444; }
-  .grid-cab { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:10px; }
-  .fila-clave { display:flex; gap:8px; align-items:flex-end; max-width:420px; }
-  .fila-clave input { font-size:14px; padding:6px; border:1px solid var(--borde); border-radius:5px; width:100%; }
-  [hidden] { display:none !important; }
+  /* Manual de marca Río Claro: verde 7481 C (#00B255), gris Cool Gray 8 C (#898A8D), negro; tipografía Raleway (principal) y Lato (secundaria) */
+  :root {
+    --rc-verde: #00B255;
+    --rc-gris: #898A8D;
+    --rc-negro: #000000;
+    --rc-azul: #2659a5;
+    --rc-rojo: #bd2c2c;
+    --bs-primary: #00B255;
+    --bs-primary-rgb: 0, 178, 85;
+    --bs-link-color: #00B255;
+    --bs-font-sans-serif: 'Lato', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  body { background: #f4f5f6; font-family: 'Lato', system-ui, sans-serif; color: #222; font-size: 14px; }
+  h1, h2, h3, .titulo { font-family: 'Raleway', 'Lato', sans-serif; font-weight: 900; }
+  .encabezado { background: #fff; border-bottom: 4px solid var(--rc-verde); }
+  .encabezado img { height: 52px; width: auto; }
+  .encabezado .sub { font-family: 'Raleway', sans-serif; font-weight: 700; color: var(--rc-gris); letter-spacing: .04em; font-size: 13px; text-transform: uppercase; }
+  .nav-rc .btn { font-family: 'Raleway', sans-serif; font-weight: 700; font-size: 13px; border-radius: 6px; }
+  .nav-rc .btn.activo { background: var(--rc-verde); border-color: var(--rc-verde); color: #fff; }
+  .nav-rc .btn:not(.activo) { color: var(--rc-gris); border-color: #d0d2d4; background: #fff; }
+  .card-rc { background: #fff; border: 1px solid #e2e4e6; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+  .card-rc h2 { font-size: 20px; color: var(--rc-verde); margin-bottom: 12px; }
+  .card-rc h3 { font-size: 14px; font-weight: 700; color: var(--rc-gris); text-transform: uppercase; letter-spacing: .05em; margin: 18px 0 8px; font-family: 'Raleway', sans-serif; }
+  .form-label { font-weight: 700; font-size: 12px; color: var(--rc-gris); margin-bottom: 3px; }
+  .form-control, .form-select { font-size: 14px; }
+  .form-control:focus, .form-select:focus { border-color: var(--rc-verde); box-shadow: 0 0 0 .15rem rgba(0,178,85,.2); }
+  .tabla-conteo { font-size: 13px; }
+  .tabla-conteo th { background: #f1f2f3; color: var(--rc-gris); font-family: 'Raleway', sans-serif; font-weight: 700; font-size: 12px; text-transform: uppercase; white-space: nowrap; vertical-align: middle; }
+  .tabla-conteo td { padding: 2px; vertical-align: middle; }
+  .tabla-conteo td.num { text-align: center; color: var(--rc-gris); width: 36px; font-weight: 700; background: #fafafa; }
+  .tabla-conteo .form-control, .tabla-conteo .form-select { font-size: 13px; padding: 3px 6px; min-width: 80px; border-color: transparent; background-color: transparent; }
+  .tabla-conteo .form-control:focus, .tabla-conteo .form-select:focus { background-color: #f3fbf6; border-color: var(--rc-verde); }
+  .tabla-conteo .form-select { padding-right: 1.6rem; background-position: right .4rem center; }
+  .tabla-conteo .c-sector, .tabla-conteo .c-comentario { min-width: 180px; }
+  .tabla-conteo .c-producto, .tabla-conteo .c-clase { min-width: 100px; }
+  .tabla-conteo .c-diametro { min-width: 110px; }
+  .historial td, .historial th { font-size: 12px; white-space: nowrap; }
+  .historial th { color: var(--rc-gris); font-family: 'Raleway', sans-serif; text-transform: uppercase; }
+  .btn-rc { background: var(--rc-verde); border-color: var(--rc-verde); color: #fff; font-weight: 700; font-family: 'Raleway', sans-serif; }
+  .btn-rc:hover, .btn-rc:focus { background: #009447; border-color: #009447; color: #fff; }
+  .btn-rc-outline { color: var(--rc-verde); border-color: var(--rc-verde); font-weight: 700; font-family: 'Raleway', sans-serif; background: #fff; }
+  .btn-rc-outline:hover { background: var(--rc-verde); border-color: var(--rc-verde); color: #fff; }
+  .msg-ok { color: var(--rc-verde); font-weight: 700; }
+  .msg-error { color: var(--rc-rojo); font-weight: 700; }
+  details.trab summary { cursor: pointer; font-weight: 700; color: var(--rc-gris); font-family: 'Raleway', sans-serif; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+  details.trab .grid-trab { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin-top: 10px; }
+  .pie { color: var(--rc-gris); font-size: 12px; text-align: center; padding: 14px 0 4px; }
+  .pie b { color: var(--rc-verde); }
+  .bloque-mant textarea { min-height: 110px; font-size: 13px; }
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>Registro de Inventario</h1>
-  <nav id="nav"></nav>
+<header class="encabezado px-3 py-2">
+  <div class="container-fluid d-flex flex-wrap align-items-center gap-3">
+    <img alt="Río Claro Postes Impregnados" src="data:image/png;base64,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">
+    <div class="sub">Registro de Inventario</div>
+  </div>
 </header>
 
-<main>
-  <div id="aviso" class="aviso" hidden></div>
+<main class="container-fluid py-3" style="max-width: 1320px;">
+  <nav class="nav-rc d-flex flex-wrap gap-2 mb-3" id="nav"></nav>
+
+  <div id="aviso" class="alert alert-warning py-2" hidden></div>
   <div id="contenedor-vistas"></div>
 
-  <section id="vista-mantenedor" class="card" hidden>
+  <section id="vista-mantenedor" class="card-rc" hidden>
     <h2>Mantenedor</h2>
-    <div id="mant-login">
-      <div class="fila-clave">
-        <label style="flex:1">Clave del mantenedor<input type="password" id="mant-clave" autocomplete="off"></label>
-        <button class="primario" id="mant-entrar">Entrar</button>
+    <div id="mant-login" class="row g-2 align-items-end" style="max-width: 460px;">
+      <div class="col">
+        <label class="form-label" for="mant-clave">Clave del mantenedor</label>
+        <input type="password" class="form-control" id="mant-clave" autocomplete="off">
       </div>
-      <p id="mant-login-msg" class="msg-error"></p>
+      <div class="col-auto">
+        <button class="btn btn-rc" id="mant-entrar">Entrar</button>
+      </div>
+      <div class="col-12"><p id="mant-login-msg" class="msg-error mb-0"></p></div>
     </div>
-    <div id="mant-editor" class="solo-mantenedor" hidden>
-      <p>Escribe un valor por línea. Al guardar, reemplaza la lista completa.</p>
-      <div class="grid-cab">
-        <label>Jefes de área<textarea id="m-jefes"></textarea></label>
-        <label>Productos<textarea id="m-productos"></textarea></label>
-        <label>Clases<textarea id="m-clases"></textarea></label>
-        <label>Largos<textarea id="m-largos"></textarea></label>
-        <label>Diámetro RCC<textarea id="m-diamRCC"></textarea></label>
-        <label>Diámetro RC-RCI<textarea id="m-diamRC"></textarea></label>
-        <label>Diámetro RD-RDI<textarea id="m-diamRD"></textarea></label>
-        <label>Nivel de secado<textarea id="m-secado"></textarea></label>
+    <div id="mant-editor" class="bloque-mant" hidden>
+      <p class="text-secondary">Escribe un valor por línea. Al guardar, reemplaza la lista completa.</p>
+      <div class="row g-3">
+        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-jefes">Jefes de área</label><textarea class="form-control" id="m-jefes"></textarea></div>
+        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-productos">Productos</label><textarea class="form-control" id="m-productos"></textarea></div>
+        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-clases">Clases</label><textarea class="form-control" id="m-clases"></textarea></div>
+        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-largos">Largos</label><textarea class="form-control" id="m-largos"></textarea></div>
+        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-diamRCC">Diámetro RCC</label><textarea class="form-control" id="m-diamRCC"></textarea></div>
+        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-diamRC">Diámetro RC / RCI</label><textarea class="form-control" id="m-diamRC"></textarea></div>
+        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-diamRD">Diámetro RD / RDI</label><textarea class="form-control" id="m-diamRD"></textarea></div>
+        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-secado">Nivel de secado</label><textarea class="form-control" id="m-secado"></textarea></div>
       </div>
-      <div class="acciones">
-        <button class="primario" id="mant-guardar">Guardar mantenedor</button>
+      <div class="d-flex align-items-center gap-3 mt-3">
+        <button class="btn btn-rc" id="mant-guardar">Guardar mantenedor</button>
         <span id="mant-msg"></span>
       </div>
     </div>
   </section>
+
+  <div class="pie">Río Claro Postes Impregnados · <b>forestalrioclaro.cl</b></div>
 </main>
 
 <datalist id="dl-jefes"></datalist>
-<datalist id="dl-productos"></datalist>
-<datalist id="dl-clases"></datalist>
-<datalist id="dl-largos"></datalist>
-<datalist id="dl-diam"></datalist>
-<datalist id="dl-secado"></datalist>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 /* ==== CONFIGURACION ==== */
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxEiJkLVXE1Ragx7C3S62YaUZkocdihBlMsGwoc_BmAix65_O_91MUwGbbobY5hNkOeQ/exec';
@@ -120,17 +135,18 @@ var COLUMNAS_TABLA = [
   { idx: 21, nombre: 'Secado' }, { idx: 22, nombre: 'Sector' }, { idx: 23, nombre: 'Comentario' }
 ];
 
+/* tipo: 'sel' = desplegable con lista del mantenedor; 'dl' = texto libre con sugerencias; 'num' = número; 'txt' = texto libre */
 var COLUMNAS_CARGA = [
-  { c: 'producto',     t: 'Producto',     type: 'text',   list: 'dl-productos' },
-  { c: 'clase',        t: 'Clase',        type: 'text',   list: 'dl-clases' },
-  { c: 'largo',        t: 'Largo',        type: 'text',   list: 'dl-largos' },
-  { c: 'diametro',     t: 'Diámetro',     type: 'text',   list: '' },
-  { c: 'secado',       t: 'Secado',       type: 'text',   list: 'dl-secado' },
-  { c: 'produccion',   t: 'Producción',   type: 'number', list: '' },
-  { c: 'recuperacion', t: 'Recuperación', type: 'number', list: '' },
-  { c: 'rechazo',      t: 'Rechazo',      type: 'number', list: '' },
-  { c: 'sector',       t: 'Sector',       type: 'text',   list: '' },
-  { c: 'comentario',   t: 'Comentario',   type: 'text',   list: '' }
+  { c: 'producto',     t: 'Producto',     tipo: 'sel', lista: 'productos' },
+  { c: 'clase',        t: 'Clase',        tipo: 'sel', lista: 'clases' },
+  { c: 'largo',        t: 'Largo',        tipo: 'sel', lista: 'largos' },
+  { c: 'diametro',     t: 'Diámetro',     tipo: 'dl' },
+  { c: 'secado',       t: 'Secado',       tipo: 'sel', lista: 'secado' },
+  { c: 'produccion',   t: 'Producción',   tipo: 'num' },
+  { c: 'recuperacion', t: 'Recuperación', tipo: 'num' },
+  { c: 'rechazo',      t: 'Rechazo',      tipo: 'num' },
+  { c: 'sector',       t: 'Sector',       tipo: 'txt' },
+  { c: 'comentario',   t: 'Comentario',   tipo: 'txt' }
 ];
 
 var LISTAS = { jefes:[], productos:[], clases:[], largos:[], diamRCC:[], diamRC:[], diamRD:[], secado:[] };
@@ -154,8 +170,10 @@ function hoyISO() {
 
 function mostrarAviso(texto) { var a = $('aviso'); a.textContent = texto; a.hidden = !texto; }
 
-function llenarDatalist(id, valores) {
-  $(id).innerHTML = valores.map(function (v) { return '<option value="' + esc(v) + '"></option>'; }).join('');
+function opcionesHtml(lista) {
+  return '<option value=""></option>' + (lista || []).map(function (v) {
+    return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
+  }).join('');
 }
 
 function diamOpciones(producto) {
@@ -182,25 +200,22 @@ function llamarPost(cuerpo) {
   }).then(function (r) { return r.json(); });
 }
 
-/* ==== CARGA DE LISTAS ==== */
-function refrescarDatalists() {
-  llenarDatalist('dl-jefes', LISTAS.jefes);
-  llenarDatalist('dl-productos', LISTAS.productos);
-  llenarDatalist('dl-clases', LISTAS.clases);
-  llenarDatalist('dl-largos', LISTAS.largos);
-  llenarDatalist('dl-secado', LISTAS.secado);
-  llenarDatalist('dl-diam', [].concat(LISTAS.diamRCC, LISTAS.diamRC, LISTAS.diamRD));
+/* ==== LISTAS ==== */
+function refrescarListas() {
+  $('dl-jefes').innerHTML = LISTAS.jefes.map(function (v) { return '<option value="' + esc(v) + '"></option>'; }).join('');
+  document.querySelectorAll('select[data-lista]').forEach(function (sel) {
+    var prev = sel.value;
+    sel.innerHTML = opcionesHtml(LISTAS[sel.getAttribute('data-lista')]);
+    sel.value = prev;
+  });
+  document.querySelectorAll('tbody[id$="-filas"] tr').forEach(actualizarDiamFila);
 }
 
 function cargarListas() {
   return llamarGet({ action: 'lists' }).then(function (datos) {
     if (!datos.ok) throw new Error(datos.error || 'No se pudieron cargar las listas');
     LISTAS = datos;
-    refrescarDatalists();
-    VISTAS.forEach(function (v) {
-      var filas = $(v.id + '-filas').querySelectorAll('tr');
-      for (var i = 0; i < filas.length; i++) actualizarDiamFila(filas[i]);
-    });
+    refrescarListas();
   });
 }
 
@@ -209,11 +224,18 @@ function filaHtml(vid, n) {
   var id = 'r-' + vid + '-' + n;
   var h = '<tr id="' + id + '"><td class="num">' + n + '</td>';
   COLUMNAS_CARGA.forEach(function (col) {
-    var list = col.c === 'diametro' ? ' list="dl-d-' + id + '"' : (col.list ? ' list="' + col.list + '"' : '');
-    var extra = col.type === 'number' ? ' min="0" step="1"' : '';
-    h += '<td><input class="c-' + col.c + '" type="' + col.type + '"' + list + extra + ' autocomplete="off"></td>';
+    var clase = 'c-' + col.c;
+    if (col.tipo === 'sel') {
+      h += '<td><select class="form-select form-select-sm ' + clase + '" data-lista="' + col.lista + '">' + opcionesHtml(LISTAS[col.lista]) + '</select></td>';
+    } else if (col.tipo === 'dl') {
+      h += '<td><input class="form-control form-control-sm ' + clase + '" type="text" list="dl-d-' + id + '" autocomplete="off"></td>';
+    } else if (col.tipo === 'num') {
+      h += '<td><input class="form-control form-control-sm ' + clase + '" type="number" min="0" step="1"></td>';
+    } else {
+      h += '<td><input class="form-control form-control-sm ' + clase + '" type="text" autocomplete="off"></td>';
+    }
   });
-  h += '<td style="display:none"><datalist id="dl-d-' + id + '"></datalist></td></tr>';
+  h += '<td class="d-none"><datalist id="dl-d-' + id + '"></datalist></td></tr>';
   return h;
 }
 
@@ -222,35 +244,35 @@ function htmlVista(v) {
   var trab = '';
   for (var i = 0; i < TRABAJADORES_MAX; i++) {
     var num = (i + 1 < 10 ? '0' : '') + (i + 1);
-    trab += '<input id="' + p + 't' + i + '" placeholder="Trabajador ' + num + '">';
+    trab += '<div><input class="form-control form-control-sm" id="' + p + 't' + i + '" placeholder="Trabajador ' + num + '"></div>';
   }
   var cab = '<th>Nº</th>' + COLUMNAS_CARGA.map(function (c) { return '<th>' + esc(c.t) + '</th>'; }).join('');
   var filas = '';
   for (var k = 1; k <= FILAS_INICIALES; k++) filas += filaHtml(v.id, k);
   contadorFilas[v.id] = FILAS_INICIALES;
   return '' +
-  '<section id="vista-' + v.id + '" class="card" hidden>' +
+  '<section id="vista-' + v.id + '" class="card-rc" hidden>' +
   '  <h2>' + esc(v.nombre) + '</h2>' +
-  '  <div class="cabecera">' +
-  '    <label>Fecha<input type="date" id="' + p + 'fecha"></label>' +
-  '    <label>Jefe de área<input list="dl-jefes" id="' + p + 'jefe" placeholder="Escribe o elige"></label>' +
+  '  <div class="row g-3">' +
+  '    <div class="col-sm-4 col-md-3 col-xl-2"><label class="form-label" for="' + p + 'fecha">Fecha</label><input type="date" class="form-control" id="' + p + 'fecha"></div>' +
+  '    <div class="col-sm-8 col-md-5 col-xl-4"><label class="form-label" for="' + p + 'jefe">Jefe de área</label><input class="form-control" list="dl-jefes" id="' + p + 'jefe" placeholder="Escribe o elige"></div>' +
   '  </div>' +
-  '  <details>' +
+  '  <details class="trab mt-3">' +
   '    <summary>Trabajadores que ayudaron a contar (ISO)</summary>' +
   '    <div class="grid-trab">' + trab + '</div>' +
   '  </details>' +
   '  <h3>Conteo</h3>' +
-  '  <div class="tabla-wrap">' +
-  '    <table id="' + p + 'carga"><thead><tr>' + cab + '</tr></thead>' +
+  '  <div class="table-responsive border rounded">' +
+  '    <table class="table table-sm table-bordered tabla-conteo mb-0"><thead><tr>' + cab + '</tr></thead>' +
   '    <tbody id="' + p + 'filas">' + filas + '</tbody></table>' +
   '  </div>' +
-  '  <div class="acciones">' +
-  '    <button class="secundario" id="' + p + 'agregar">Agregar ' + FILAS_NUEVAS + ' filas</button>' +
-  '    <button class="primario" id="' + p + 'btn">Guardar filas</button>' +
-  '    <span id="' + p + 'msg"></span>' +
+  '  <div class="d-flex flex-wrap align-items-center gap-2 mt-3">' +
+  '    <button class="btn btn-rc-outline btn-sm" id="' + p + 'agregar">Agregar ' + FILAS_NUEVAS + ' filas</button>' +
+  '    <button class="btn btn-rc" id="' + p + 'btn">Guardar filas</button>' +
+  '    <span id="' + p + 'msg" class="ms-2"></span>' +
   '  </div>' +
   '  <h3>Últimos registros de esta vista</h3>' +
-  '  <div class="tabla-wrap historial"><table id="' + p + 'tabla"></table></div>' +
+  '  <div class="table-responsive border rounded"><table class="table table-sm table-striped historial mb-0" id="' + p + 'tabla"></table></div>' +
   '</section>';
 }
 
@@ -277,7 +299,7 @@ function agregarFilas(vid, cantidad) {
 }
 
 function limpiarFila(tr) {
-  tr.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+  tr.querySelectorAll('input, select').forEach(function (i) { i.value = ''; });
   actualizarDiamFila(tr);
 }
 
@@ -290,12 +312,7 @@ function leerCabecera(v) {
     var t = valor(p + 't' + i);
     if (t) trabajadores.push(t);
   }
-  return {
-    vista: v.nombre,
-    fecha: valor(p + 'fecha'),
-    jefe: valor(p + 'jefe'),
-    trabajadores: trabajadores
-  };
+  return { vista: v.nombre, fecha: valor(p + 'fecha'), jefe: valor(p + 'jefe'), trabajadores: trabajadores };
 }
 
 function leerFilas(vid) {
@@ -325,21 +342,21 @@ function guardarFilas(v) {
   var msg = $(v.id + '-msg'), btn = $(v.id + '-btn');
   var cab = leerCabecera(v);
   var filas = leerFilas(v.id).filter(function (f) { return !f.vacia; });
-  msg.className = ''; msg.textContent = '';
+  msg.className = 'ms-2'; msg.textContent = '';
 
   if (!cab.fecha || !cab.jefe) {
-    msg.className = 'msg-error';
+    msg.className = 'ms-2 msg-error';
     msg.textContent = 'Falta la fecha o el jefe de área.';
     return;
   }
   if (filas.length === 0) {
-    msg.className = 'msg-error';
+    msg.className = 'ms-2 msg-error';
     msg.textContent = 'No hay filas con datos para guardar.';
     return;
   }
   var malas = filas.filter(function (f) { return !filaValida(f.datos); }).map(function (f) { return f.n; });
   if (malas.length) {
-    msg.className = 'msg-error';
+    msg.className = 'ms-2 msg-error';
     msg.textContent = 'Revisa las filas ' + malas.join(', ') + ': necesitan producto y al menos una cantidad.';
     return;
   }
@@ -348,7 +365,7 @@ function guardarFilas(v) {
   var guardadas = 0;
   function siguiente(i) {
     if (i >= filas.length) {
-      msg.className = 'msg-ok';
+      msg.className = 'ms-2 msg-ok';
       msg.textContent = 'Se guardaron ' + guardadas + ' filas.';
       cargarRecientes(v);
       btn.disabled = false;
@@ -364,7 +381,7 @@ function guardarFilas(v) {
     });
   }
   siguiente(0).catch(function (e) {
-    msg.className = 'msg-error';
+    msg.className = 'ms-2 msg-error';
     msg.textContent = 'Se guardaron ' + guardadas + ' filas. Error en ' + e.message;
     cargarRecientes(v);
     btn.disabled = false;
@@ -380,14 +397,13 @@ function cargarRecientes(v) {
       return '<tr>' + COLUMNAS_TABLA.map(function (c) {
         var val = f[c.idx];
         if (c.idx === 2 && val) val = String(val).slice(0, 10);
-        var clase = c.idx === 23 ? ' class="comentario"' : '';
-        return '<td' + clase + '>' + esc(val) + '</td>';
+        return '<td>' + esc(val) + '</td>';
       }).join('') + '</tr>';
     }).join('');
     tabla.innerHTML = '<thead><tr>' + cab + '</tr></thead><tbody>' +
       (filas || '<tr><td>Sin registros aún</td></tr>') + '</tbody>';
   }).catch(function (e) {
-    tabla.innerHTML = '<tr><td class="msg-error">No se pudieron cargar los registros: ' + esc(e.message) + '</td></tr>';
+    tabla.innerHTML = '<tbody><tr><td class="msg-error">No se pudieron cargar los registros: ' + esc(e.message) + '</td></tr></tbody>';
   });
 }
 
@@ -398,7 +414,7 @@ function montarVistas() {
     $(p + 'fecha').value = hoyISO();
     $(p + 'btn').addEventListener('click', function () { guardarFilas(v); });
     $(p + 'agregar').addEventListener('click', function () { agregarFilas(v.id, FILAS_NUEVAS); });
-    $(p + 'filas').addEventListener('input', function (e) {
+    $(p + 'filas').addEventListener('change', function (e) {
       if (e.target.classList.contains('c-producto')) actualizarDiamFila(e.target.closest('tr'));
     });
   });
@@ -420,7 +436,7 @@ function mostrarSeccion(id) {
 
 function montarNav() {
   $('nav').innerHTML = SECCIONES.map(function (s) {
-    return '<button data-sec="' + s.id + '">' + esc(s.nombre) + '</button>';
+    return '<button class="btn btn-sm" data-sec="' + s.id + '">' + esc(s.nombre) + '</button>';
   }).join('');
   $('nav').addEventListener('click', function (e) {
     var b = e.target.closest('button[data-sec]');
