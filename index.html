@@ -58,6 +58,12 @@
   .pie { color: var(--rc-gris); font-size: 12px; text-align: center; padding: 14px 0 4px; }
   .pie b { color: var(--rc-verde); }
   .bloque-mant textarea { min-height: 110px; font-size: 13px; }
+  .tabla-bd { font-size: 12px; }
+  .tabla-bd th { background: #f1f2f3; color: var(--rc-gris); font-family: 'Raleway', sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; white-space: nowrap; }
+  .tabla-bd td { padding: 2px; vertical-align: middle; min-width: 90px; }
+  .tabla-bd .form-control, .tabla-bd .form-select { font-size: 12px; padding: 3px 5px; border-color: transparent; background-color: transparent; }
+  .tabla-bd .form-control:focus, .tabla-bd .form-select:focus { background-color: #f3fbf6; border-color: var(--rc-verde); }
+  .tabla-bd tr.fila-cambiada td { background: #fff8e1; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -289,6 +295,18 @@ function htmlVista(v) {
   '    <button class="btn btn-rc" id="' + p + 'btn">Guardar filas</button>' +
   '    <span id="' + p + 'msg" class="ms-2"></span>' +
   '  </div>' +
+  '  <h3>Registros guardados en la BD</h3>' +
+  '  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">' +
+  '    <button class="btn btn-rc-outline btn-sm" id="' + p + 'bd-recargar">Recargar</button>' +
+  '    <button class="btn btn-rc btn-sm" id="' + p + 'bd-guardar">Guardar cambios</button>' +
+  '    <span id="' + p + 'bd-contador" class="small text-secondary"></span>' +
+  '  </div>' +
+  '  <p id="' + p + 'bd-estado" class="small mb-2" style="color:#898A8D;font-weight:700;">Elige un mes para ver los registros.</p>' +
+  '  <div class="table-responsive border rounded">' +
+  '    <table class="table table-sm table-bordered tabla-bd mb-0"><thead><tr>' +
+  '    <th>Nº fila</th>' + CAMPOS_BD.map(function (c) { return '<th>' + esc(c.t) + '</th>'; }).join('') +
+  '    </tr></thead><tbody id="' + p + 'bd-tbody"></tbody></table>' +
+  '  </div>' +
   '</section>';
 }
 
@@ -384,6 +402,7 @@ function guardarFilas(v) {
       msg.className = 'ms-2 msg-ok';
       msg.textContent = 'Se guardaron ' + guardadas + ' filas.';
       btn.disabled = false;
+      cargarRegistrosVista(v);
       return Promise.resolve();
     }
     var f = filas[i];
@@ -478,6 +497,155 @@ function montarVistas() {
     $(p + 'filas').addEventListener('change', function (e) {
       if (e.target.classList.contains('c-producto')) actualizarDiamFila(e.target.closest('tr'));
     });
+    $(p + 'fecha').addEventListener('change', function () { cargarRegistrosVista(v); });
+    $(p + 'bd-recargar').addEventListener('click', function () { cargarRegistrosVista(v); });
+    $(p + 'bd-guardar').addEventListener('click', function () { guardarBd(v); });
+    $(p + 'bd-tbody').addEventListener('input', function (e) { marcarCambioBd(v, e.target.closest('tr')); });
+    $(p + 'bd-tbody').addEventListener('change', function (e) { marcarCambioBd(v, e.target.closest('tr')); });
+  });
+}
+
+/* ==== REGISTROS GUARDADOS EN LA BD ==== */
+var CAMPOS_BD = [
+  { c: 'jefe', t: 'Jefe', tipo: 'jefe' },
+  { c: 'producto', t: 'Producto', tipo: 'sel', lista: 'productos' },
+  { c: 'clase', t: 'Clase', tipo: 'sel', lista: 'clases' },
+  { c: 'largo', t: 'Largo', tipo: 'sel', lista: 'largos' },
+  { c: 'diametro', t: 'Diámetro', tipo: 'txt' },
+  { c: 'produccion', t: 'Producción', tipo: 'num' },
+  { c: 'recuperacion', t: 'Recuperación', tipo: 'num' },
+  { c: 'rechazo', t: 'Rechazo', tipo: 'num' },
+  { c: 'secado', t: 'Secado', tipo: 'sel', lista: 'secado' },
+  { c: 'sector', t: 'Sector', tipo: 'txt' },
+  { c: 'comentario', t: 'Comentario', tipo: 'txt' }
+];
+
+var BD = {};
+
+function estadoBd(v, texto, error) {
+  var e = $(v.id + '-bd-estado');
+  e.textContent = texto;
+  e.style.color = error ? 'var(--rc-rojo)' : '#898A8D';
+}
+
+function contadorBd(v) {
+  var n = $(v.id + '-bd-tbody').querySelectorAll('tr.fila-cambiada').length;
+  $(v.id + '-bd-contador').textContent = n ? n + ' cambio(s) sin guardar' : '';
+}
+
+function celdaBd(camp, valorCelda) {
+  var v = valorCelda === undefined || valorCelda === null ? '' : String(valorCelda);
+  var attrs = ' class="' + (camp.tipo === 'sel' ? 'form-select' : 'form-control') + ' form-control-sm bd-campo" data-c="' + camp.c + '"';
+  if (camp.tipo === 'sel') {
+    var lista = (LISTAS[camp.lista] || []).slice();
+    if (v && lista.indexOf(v) < 0) lista.push(v);
+    return '<select' + attrs + '><option value=""></option>' + lista.map(function (o) {
+      return '<option value="' + esc(o) + '"' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>';
+    }).join('') + '</select>';
+  }
+  if (camp.tipo === 'num') return '<input type="number" min="0" step="1"' + attrs + ' value="' + esc(v) + '">';
+  if (camp.tipo === 'jefe') return '<input type="text" list="dl-jefes"' + attrs + ' value="' + esc(v) + '">';
+  return '<input type="text"' + attrs + ' value="' + esc(v) + '">';
+}
+
+function camposDe(reg) {
+  var d = {};
+  CAMPOS_BD.forEach(function (camp) {
+    d[camp.c] = reg[camp.c] === undefined || reg[camp.c] === null ? '' : String(reg[camp.c]);
+  });
+  return d;
+}
+
+function leerFilaBd(tr) {
+  var d = {};
+  CAMPOS_BD.forEach(function (camp) {
+    var el = tr.querySelector('[data-c="' + camp.c + '"]');
+    d[camp.c] = el ? (el.value || '').trim() : '';
+  });
+  return d;
+}
+
+function renderBd(v, filas) {
+  BD[v.id] = { filas: filas, orig: {} };
+  $(v.id + '-bd-tbody').innerHTML = filas.map(function (reg) {
+    BD[v.id].orig[reg.fila] = JSON.stringify(camposDe(reg));
+    return '<tr data-fila="' + reg.fila + '"><td class="num">' + reg.fila + '</td>' +
+      CAMPOS_BD.map(function (camp) { return '<td>' + celdaBd(camp, reg[camp.c]) + '</td>'; }).join('') + '</tr>';
+  }).join('');
+  contadorBd(v);
+}
+
+function marcarCambioBd(v, tr) {
+  if (!tr || !tr.dataset.fila || !BD[v.id]) return;
+  var cambiada = JSON.stringify(leerFilaBd(tr)) !== BD[v.id].orig[tr.dataset.fila];
+  tr.classList.toggle('fila-cambiada', cambiada);
+  contadorBd(v);
+}
+
+function cargarRegistrosVista(v) {
+  var periodo = valor(v.id + '-fecha');
+  if (!periodo) { estadoBd(v, 'Elige un mes para ver los registros.'); return Promise.resolve(); }
+  estadoBd(v, 'Leyendo BD…');
+  return llamarGet({ action: 'registrosVista', periodo: periodo, vista: v.nombre }).then(function (r) {
+    if (!r.ok) throw new Error(r.error);
+    renderBd(v, r.rows);
+    estadoBd(v, r.rows.length
+      ? 'Se leyeron ' + r.rows.length + ' líneas de ' + v.nombre + ' · ' + nombrePeriodo(periodo) + '.'
+      : 'No hay líneas guardadas de ' + v.nombre + ' para ' + nombrePeriodo(periodo) + '.');
+  }).catch(function (e) {
+    estadoBd(v, 'No se pudo leer la BD: ' + e.message, true);
+  });
+}
+
+function guardarBd(v) {
+  var tbody = $(v.id + '-bd-tbody');
+  var trs = tbody.querySelectorAll('tr.fila-cambiada');
+  if (!trs.length) { estadoBd(v, 'No hay cambios para guardar.'); return; }
+
+  var entradas = [];
+  var malas = [];
+  for (var i = 0; i < trs.length; i++) {
+    var fila = trs[i].dataset.fila;
+    var reg = BD[v.id].filas.filter(function (r) { return String(r.fila) === String(fila); })[0];
+    var campos = leerFilaBd(trs[i]);
+    var unidades = [campos.produccion, campos.recuperacion, campos.rechazo];
+    if (!campos.producto || !unidades.some(function (u) { return u !== '' && Number(u) > 0; })) malas.push(fila);
+    entradas.push({ reg: reg, campos: campos });
+  }
+  if (malas.length) {
+    estadoBd(v, 'Revisa las líneas ' + malas.join(', ') + ': necesitan producto y al menos una cantidad.', true);
+    return;
+  }
+
+  var btn = $(v.id + '-bd-guardar');
+  btn.disabled = true;
+  var hechos = 0;
+  function siguiente(k) {
+    if (k >= entradas.length) {
+      btn.disabled = false;
+      return cargarRegistrosVista(v).then(function () {
+        estadoBd(v, 'Se guardaron ' + hechos + ' cambios en la BD.');
+      });
+    }
+    var reg = entradas[k].reg, c = entradas[k].campos;
+    estadoBd(v, 'Guardando BD… ' + (k + 1) + ' de ' + entradas.length);
+    var data = {
+      vista: reg.vista, periodo: reg.periodo, jefe: c.jefe, trabajadores: reg.trabajadores,
+      producto: c.producto, clase: c.clase, largo: c.largo, diametro: c.diametro,
+      produccion: c.produccion, recuperacion: c.recuperacion, rechazo: c.rechazo,
+      secado: c.secado, sector: c.sector, comentario: c.comentario
+    };
+    return llamarPost({ action: 'actualizar', fila: reg.fila, data: data }).then(function (r) {
+      if (!r.ok) throw new Error('línea ' + reg.fila + ': ' + r.error);
+      hechos++;
+      return siguiente(k + 1);
+    });
+  }
+  siguiente(0).catch(function (e) {
+    btn.disabled = false;
+    cargarRegistrosVista(v).then(function () {
+      estadoBd(v, 'Se guardaron ' + hechos + ' cambios. Error: ' + e.message, true);
+    });
   });
 }
 
@@ -493,6 +661,7 @@ function mostrarSeccion(id) {
     if (b) b.classList.toggle('activo', s.id === id);
   });
   var v = VISTAS.filter(function (x) { return 'vista-' + x.id === id; })[0];
+  if (v) cargarRegistrosVista(v);
   if (id === 'vista-resumen') cargarPeriodos().then(cargarResumen).catch(function (e) { mostrarAviso(e.message); });
 }
 
