@@ -7,37 +7,47 @@
 <style>
   :root { --azul:#1f4e79; --gris:#f3f5f7; --borde:#cfd6dd; --verde:#2e7d32; --rojo:#b71c1c; }
   * { box-sizing: border-box; }
-  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--gris); color:#1b1b1b; }
-  header { background:var(--azul); color:#fff; padding:12px 16px; }
-  header h1 { margin:0 0 8px; font-size:20px; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--gris); color:#1b1b1b; font-size:14px; }
+  header { background:var(--azul); color:#fff; padding:10px 14px; }
+  header h1 { margin:0 0 8px; font-size:18px; }
   nav { display:flex; flex-wrap:wrap; gap:6px; }
-  nav button { background:transparent; color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:6px; padding:6px 10px; cursor:pointer; font-size:14px; }
+  nav button { background:transparent; color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:6px; padding:5px 10px; cursor:pointer; font-size:13px; }
   nav button.activo { background:#fff; color:var(--azul); font-weight:600; }
-  main { padding:16px; max-width:1100px; margin:0 auto; }
-  .card { background:#fff; border:1px solid var(--borde); border-radius:8px; padding:16px; margin-bottom:16px; }
-  .card h2 { margin:0 0 12px; font-size:18px; color:var(--azul); }
-  .card h3 { margin:18px 0 8px; font-size:15px; color:#333; }
-  .grid-cab { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:12px; }
-  .grid-trab { display:grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap:8px; margin-top:8px; }
-  .grid-linea { display:grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap:12px; }
-  .ancho { grid-column: 1 / -1; }
-  label { display:flex; flex-direction:column; font-size:13px; color:#444; gap:4px; }
-  input, textarea, select { font-size:15px; padding:8px; border:1px solid var(--borde); border-radius:6px; width:100%; background:#fff; }
-  textarea { resize:vertical; }
-  details summary { cursor:pointer; font-weight:600; color:#333; margin-top:12px; }
-  .acciones { display:flex; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap; }
-  button.primario { background:var(--azul); color:#fff; border:0; border-radius:6px; padding:10px 18px; font-size:15px; cursor:pointer; }
-  button.primario:disabled { opacity:.6; cursor:wait; }
-  .msg-ok { color:var(--verde); font-weight:600; }
-  .msg-error { color:var(--rojo); font-weight:600; }
-  .aviso { background:#fff3cd; border:1px solid #e0c36b; border-radius:6px; padding:10px; margin-bottom:12px; }
+  main { padding:12px; max-width:1300px; margin:0 auto; }
+  .card { background:#fff; border:1px solid var(--borde); border-radius:8px; padding:12px; margin-bottom:12px; }
+  .card h2 { margin:0 0 10px; font-size:17px; color:var(--azul); }
+  .card h3 { margin:14px 0 6px; font-size:14px; color:#333; }
+  .cabecera { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
+  .cabecera label { display:flex; flex-direction:column; font-size:12px; color:#444; gap:3px; }
+  .cabecera input { font-size:14px; padding:6px; border:1px solid var(--borde); border-radius:5px; width:200px; }
+  details summary { cursor:pointer; font-weight:600; color:#333; margin-top:10px; }
+  .grid-trab { display:grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap:6px; margin-top:6px; }
+  .grid-trab input { font-size:13px; padding:5px; border:1px solid var(--borde); border-radius:5px; width:100%; }
   .tabla-wrap { overflow-x:auto; }
   table { border-collapse:collapse; width:100%; font-size:13px; }
-  th, td { border-bottom:1px solid var(--borde); padding:6px 8px; text-align:left; white-space:nowrap; }
-  th { background:var(--gris); }
+  th, td { border:1px solid var(--borde); padding:2px 4px; text-align:left; white-space:nowrap; }
+  th { background:var(--gris); font-weight:600; padding:5px 4px; }
+  td.num { text-align:center; color:#666; background:#fafafa; width:34px; }
+  td input { width:100%; min-width:70px; font-size:13px; padding:4px 5px; border:1px solid transparent; border-radius:3px; background:#fff; }
+  td input:focus { border-color:var(--azul); outline:none; background:#f5f9ff; }
+  td input.c-sector, td input.c-comentario { min-width:180px; }
+  td input.c-producto, td input.c-clase { min-width:90px; }
+  td input.c-diametro { min-width:100px; }
+  td input[type=number] { min-width:70px; }
+  .historial td, .historial th { white-space:nowrap; }
   td.comentario { white-space:normal; min-width:160px; }
-  .solo-mantenedor textarea { min-height:90px; font-family:inherit; }
+  .acciones { display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  button.primario { background:var(--azul); color:#fff; border:0; border-radius:6px; padding:8px 16px; font-size:14px; cursor:pointer; }
+  button.primario:disabled { opacity:.6; cursor:wait; }
+  button.secundario { background:#fff; color:var(--azul); border:1px solid var(--azul); border-radius:6px; padding:6px 12px; font-size:13px; cursor:pointer; }
+  .msg-ok { color:var(--verde); font-weight:600; }
+  .msg-error { color:var(--rojo); font-weight:600; }
+  .aviso { background:#fff3cd; border:1px solid #e0c36b; border-radius:6px; padding:8px; margin-bottom:10px; }
+  .solo-mantenedor textarea { min-height:90px; font-family:inherit; width:100%; font-size:13px; padding:6px; border:1px solid var(--borde); border-radius:5px; }
+  .solo-mantenedor label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:#444; }
+  .grid-cab { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:10px; }
   .fila-clave { display:flex; gap:8px; align-items:flex-end; max-width:420px; }
+  .fila-clave input { font-size:14px; padding:6px; border:1px solid var(--borde); border-radius:5px; width:100%; }
   [hidden] { display:none !important; }
 </style>
 </head>
@@ -81,7 +91,6 @@
   </section>
 </main>
 
-<!-- Listas compartidas por todas las vistas. Se llenan desde el Mantenedor. -->
 <datalist id="dl-jefes"></datalist>
 <datalist id="dl-productos"></datalist>
 <datalist id="dl-clases"></datalist>
@@ -101,8 +110,9 @@ var VISTAS = [
 ];
 
 var TRABAJADORES_MAX = 10;
-var CAMPOS_LINEA = ['producto','clase','largo','diametro','secado','produccion','recuperacion','rechazo','sector','comentario'];
-// Columnas de la hoja Registros que se muestran en la tabla
+var FILAS_INICIALES = 12;
+var FILAS_NUEVAS = 5;
+
 var COLUMNAS_TABLA = [
   { idx: 2, nombre: 'Fecha' }, { idx: 3, nombre: 'Jefe' }, { idx: 14, nombre: 'Producto' },
   { idx: 15, nombre: 'Clase' }, { idx: 16, nombre: 'Largo' }, { idx: 17, nombre: 'Diámetro' },
@@ -110,8 +120,22 @@ var COLUMNAS_TABLA = [
   { idx: 21, nombre: 'Secado' }, { idx: 22, nombre: 'Sector' }, { idx: 23, nombre: 'Comentario' }
 ];
 
+var COLUMNAS_CARGA = [
+  { c: 'producto',     t: 'Producto',     type: 'text',   list: 'dl-productos' },
+  { c: 'clase',        t: 'Clase',        type: 'text',   list: 'dl-clases' },
+  { c: 'largo',        t: 'Largo',        type: 'text',   list: 'dl-largos' },
+  { c: 'diametro',     t: 'Diámetro',     type: 'text',   list: '' },
+  { c: 'secado',       t: 'Secado',       type: 'text',   list: 'dl-secado' },
+  { c: 'produccion',   t: 'Producción',   type: 'number', list: '' },
+  { c: 'recuperacion', t: 'Recuperación', type: 'number', list: '' },
+  { c: 'rechazo',      t: 'Rechazo',      type: 'number', list: '' },
+  { c: 'sector',       t: 'Sector',       type: 'text',   list: '' },
+  { c: 'comentario',   t: 'Comentario',   type: 'text',   list: '' }
+];
+
 var LISTAS = { jefes:[], productos:[], clases:[], largos:[], diamRCC:[], diamRC:[], diamRD:[], secado:[] };
 var claveActual = '';
+var contadorFilas = {};
 
 /* ==== UTILIDADES ==== */
 function $(id) { return document.getElementById(id); }
@@ -173,11 +197,26 @@ function cargarListas() {
     if (!datos.ok) throw new Error(datos.error || 'No se pudieron cargar las listas');
     LISTAS = datos;
     refrescarDatalists();
-    VISTAS.forEach(function (v) { actualizarDiam(v.id); });
+    VISTAS.forEach(function (v) {
+      var filas = $(v.id + '-filas').querySelectorAll('tr');
+      for (var i = 0; i < filas.length; i++) actualizarDiamFila(filas[i]);
+    });
   });
 }
 
-/* ==== VISTAS DE REGISTRO ==== */
+/* ==== TABLA DE CARGA ==== */
+function filaHtml(vid, n) {
+  var id = 'r-' + vid + '-' + n;
+  var h = '<tr id="' + id + '"><td class="num">' + n + '</td>';
+  COLUMNAS_CARGA.forEach(function (col) {
+    var list = col.c === 'diametro' ? ' list="dl-d-' + id + '"' : (col.list ? ' list="' + col.list + '"' : '');
+    var extra = col.type === 'number' ? ' min="0" step="1"' : '';
+    h += '<td><input class="c-' + col.c + '" type="' + col.type + '"' + list + extra + ' autocomplete="off"></td>';
+  });
+  h += '<td style="display:none"><datalist id="dl-d-' + id + '"></datalist></td></tr>';
+  return h;
+}
+
 function htmlVista(v) {
   var p = v.id + '-';
   var trab = '';
@@ -185,10 +224,14 @@ function htmlVista(v) {
     var num = (i + 1 < 10 ? '0' : '') + (i + 1);
     trab += '<input id="' + p + 't' + i + '" placeholder="Trabajador ' + num + '">';
   }
+  var cab = '<th>Nº</th>' + COLUMNAS_CARGA.map(function (c) { return '<th>' + esc(c.t) + '</th>'; }).join('');
+  var filas = '';
+  for (var k = 1; k <= FILAS_INICIALES; k++) filas += filaHtml(v.id, k);
+  contadorFilas[v.id] = FILAS_INICIALES;
   return '' +
   '<section id="vista-' + v.id + '" class="card" hidden>' +
   '  <h2>' + esc(v.nombre) + '</h2>' +
-  '  <div class="grid-cab">' +
+  '  <div class="cabecera">' +
   '    <label>Fecha<input type="date" id="' + p + 'fecha"></label>' +
   '    <label>Jefe de área<input list="dl-jefes" id="' + p + 'jefe" placeholder="Escribe o elige"></label>' +
   '  </div>' +
@@ -196,49 +239,51 @@ function htmlVista(v) {
   '    <summary>Trabajadores que ayudaron a contar (ISO)</summary>' +
   '    <div class="grid-trab">' + trab + '</div>' +
   '  </details>' +
-  '  <h3>Línea de conteo</h3>' +
-  '  <div class="grid-linea">' +
-  '    <label>Producto<input list="dl-productos" id="' + p + 'producto" autocomplete="off"></label>' +
-  '    <label>Clase<input list="dl-clases" id="' + p + 'clase" autocomplete="off"></label>' +
-  '    <label>Largo<input list="dl-largos" id="' + p + 'largo" autocomplete="off"></label>' +
-  '    <label>Diámetro<input list="dl-diam" id="' + p + 'diametro" autocomplete="off"></label>' +
-  '    <label>Nivel de secado<input list="dl-secado" id="' + p + 'secado" autocomplete="off"></label>' +
-  '    <label>Unidades producción<input type="number" min="0" step="1" id="' + p + 'produccion"></label>' +
-  '    <label>Unidades recuperación<input type="number" min="0" step="1" id="' + p + 'recuperacion"></label>' +
-  '    <label>Unidades rechazo<input type="number" min="0" step="1" id="' + p + 'rechazo"></label>' +
-  '    <label class="ancho">Sector<input id="' + p + 'sector" placeholder="Ej: al lado del rojo, frente a la Morbark 2, esquina del canal"></label>' +
-  '    <label class="ancho">Comentario<textarea id="' + p + 'comentario" rows="2"></textarea></label>' +
+  '  <h3>Conteo</h3>' +
+  '  <div class="tabla-wrap">' +
+  '    <table id="' + p + 'carga"><thead><tr>' + cab + '</tr></thead>' +
+  '    <tbody id="' + p + 'filas">' + filas + '</tbody></table>' +
   '  </div>' +
   '  <div class="acciones">' +
-  '    <button class="primario" id="' + p + 'btn">Guardar registro</button>' +
+  '    <button class="secundario" id="' + p + 'agregar">Agregar ' + FILAS_NUEVAS + ' filas</button>' +
+  '    <button class="primario" id="' + p + 'btn">Guardar filas</button>' +
   '    <span id="' + p + 'msg"></span>' +
   '  </div>' +
   '  <h3>Últimos registros de esta vista</h3>' +
-  '  <div class="tabla-wrap"><table id="' + p + 'tabla"></table></div>' +
+  '  <div class="tabla-wrap historial"><table id="' + p + 'tabla"></table></div>' +
   '</section>';
+}
+
+function valorFila(tr, clase) {
+  var el = tr.querySelector('.c-' + clase);
+  return el ? (el.value || '').trim() : '';
+}
+
+function actualizarDiamFila(tr) {
+  var dl = tr.querySelector('datalist');
+  if (!dl) return;
+  dl.innerHTML = diamOpciones(valorFila(tr, 'producto')).map(function (o) {
+    return '<option value="' + esc(o) + '"></option>';
+  }).join('');
+}
+
+function agregarFilas(vid, cantidad) {
+  var html = '';
+  for (var i = 0; i < cantidad; i++) {
+    contadorFilas[vid] = (contadorFilas[vid] || 0) + 1;
+    html += filaHtml(vid, contadorFilas[vid]);
+  }
+  $(vid + '-filas').insertAdjacentHTML('beforeend', html);
+}
+
+function limpiarFila(tr) {
+  tr.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+  actualizarDiamFila(tr);
 }
 
 function valor(id) { return ($(id).value || '').trim(); }
 
-function actualizarDiam(vistaId) {
-  var dlId = 'dl-diam-' + vistaId;
-  var previo = $(dlId);
-  if (previo) previo.remove();
-  var dl = document.createElement('datalist');
-  dl.id = dlId;
-  dl.innerHTML = diamOpciones(valor(vistaId + '-producto')).map(function (o) {
-    return '<option value="' + esc(o) + '"></option>';
-  }).join('');
-  document.body.appendChild(dl);
-  $(vistaId + '-diametro').setAttribute('list', dlId);
-}
-
-function limpiarLinea(vistaId) {
-  CAMPOS_LINEA.forEach(function (c) { $(vistaId + '-' + c).value = ''; });
-  actualizarDiam(vistaId);
-}
-
-function leerRegistro(v) {
+function leerCabecera(v) {
   var p = v.id + '-';
   var trabajadores = [];
   for (var i = 0; i < TRABAJADORES_MAX; i++) {
@@ -249,36 +294,79 @@ function leerRegistro(v) {
     vista: v.nombre,
     fecha: valor(p + 'fecha'),
     jefe: valor(p + 'jefe'),
-    trabajadores: trabajadores,
-    producto: valor(p + 'producto'),
-    clase: valor(p + 'clase'),
-    largo: valor(p + 'largo'),
-    diametro: valor(p + 'diametro'),
-    secado: valor(p + 'secado'),
-    produccion: valor(p + 'produccion'),
-    recuperacion: valor(p + 'recuperacion'),
-    rechazo: valor(p + 'rechazo'),
-    sector: valor(p + 'sector'),
-    comentario: valor(p + 'comentario')
+    trabajadores: trabajadores
   };
 }
 
-function guardarRegistro(v) {
-  var p = v.id + '-';
-  var btn = $(p + 'btn'), msg = $(p + 'msg');
-  var datos = leerRegistro(v);
+function leerFilas(vid) {
+  var trs = $(vid + '-filas').querySelectorAll('tr');
+  var out = [];
+  for (var i = 0; i < trs.length; i++) {
+    var tr = trs[i];
+    var datos = {};
+    var vacia = true;
+    COLUMNAS_CARGA.forEach(function (col) {
+      var val = valorFila(tr, col.c);
+      datos[col.c] = val;
+      if (val !== '') vacia = false;
+    });
+    out.push({ n: tr.querySelector('td.num').textContent, tr: tr, datos: datos, vacia: vacia });
+  }
+  return out;
+}
+
+function filaValida(datos) {
+  if (!datos.producto) return false;
+  var unidades = [datos.produccion, datos.recuperacion, datos.rechazo];
+  return unidades.some(function (u) { return u !== '' && Number(u) > 0; });
+}
+
+function guardarFilas(v) {
+  var msg = $(v.id + '-msg'), btn = $(v.id + '-btn');
+  var cab = leerCabecera(v);
+  var filas = leerFilas(v.id).filter(function (f) { return !f.vacia; });
   msg.className = ''; msg.textContent = '';
-  btn.disabled = true;
-  llamarPost({ action: 'registrar', data: datos }).then(function (r) {
-    if (!r.ok) throw new Error(r.error);
-    msg.className = 'msg-ok';
-    msg.textContent = 'Guardado. Puedes ingresar la siguiente línea.';
-    limpiarLinea(v.id);
-    cargarRecientes(v);
-  }).catch(function (e) {
+
+  if (!cab.fecha || !cab.jefe) {
     msg.className = 'msg-error';
-    msg.textContent = 'No se guardó: ' + e.message;
-  }).then(function () {
+    msg.textContent = 'Falta la fecha o el jefe de área.';
+    return;
+  }
+  if (filas.length === 0) {
+    msg.className = 'msg-error';
+    msg.textContent = 'No hay filas con datos para guardar.';
+    return;
+  }
+  var malas = filas.filter(function (f) { return !filaValida(f.datos); }).map(function (f) { return f.n; });
+  if (malas.length) {
+    msg.className = 'msg-error';
+    msg.textContent = 'Revisa las filas ' + malas.join(', ') + ': necesitan producto y al menos una cantidad.';
+    return;
+  }
+
+  btn.disabled = true;
+  var guardadas = 0;
+  function siguiente(i) {
+    if (i >= filas.length) {
+      msg.className = 'msg-ok';
+      msg.textContent = 'Se guardaron ' + guardadas + ' filas.';
+      cargarRecientes(v);
+      btn.disabled = false;
+      return Promise.resolve();
+    }
+    var f = filas[i];
+    var data = Object.assign({}, cab, f.datos, { trabajadores: cab.trabajadores });
+    return llamarPost({ action: 'registrar', data: data }).then(function (r) {
+      if (!r.ok) throw new Error('fila ' + f.n + ': ' + r.error);
+      guardadas++;
+      limpiarFila(f.tr);
+      return siguiente(i + 1);
+    });
+  }
+  siguiente(0).catch(function (e) {
+    msg.className = 'msg-error';
+    msg.textContent = 'Se guardaron ' + guardadas + ' filas. Error en ' + e.message;
+    cargarRecientes(v);
     btn.disabled = false;
   });
 }
@@ -308,9 +396,11 @@ function montarVistas() {
   VISTAS.forEach(function (v) {
     var p = v.id + '-';
     $(p + 'fecha').value = hoyISO();
-    $(p + 'producto').addEventListener('input', function () { actualizarDiam(v.id); });
-    $(p + 'producto').addEventListener('change', function () { actualizarDiam(v.id); });
-    $(p + 'btn').addEventListener('click', function () { guardarRegistro(v); });
+    $(p + 'btn').addEventListener('click', function () { guardarFilas(v); });
+    $(p + 'agregar').addEventListener('click', function () { agregarFilas(v.id, FILAS_NUEVAS); });
+    $(p + 'filas').addEventListener('input', function (e) {
+      if (e.target.classList.contains('c-producto')) actualizarDiamFila(e.target.closest('tr'));
+    });
   });
 }
 
@@ -390,9 +480,6 @@ function iniciar() {
   $('mant-clave').addEventListener('keydown', function (e) { if (e.key === 'Enter') entrarMantenedor(); });
   $('mant-guardar').addEventListener('click', guardarMantenedor);
 
-  if (APPS_SCRIPT_URL.indexOf('PEGAR') === 0) {
-    mostrarAviso('Falta configurar APPS_SCRIPT_URL en index.html.');
-  }
   cargarListas().catch(function (e) {
     mostrarAviso('No se pudieron cargar las listas del mantenedor: ' + e.message);
   }).then(function () {
