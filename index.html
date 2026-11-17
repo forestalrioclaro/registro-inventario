@@ -588,6 +588,7 @@ function cargarRegistrosVista(v) {
   estadoBd(v, 'Leyendo BD…');
   return llamarGet({ action: 'registrosVista', periodo: periodo, vista: v.nombre }).then(function (r) {
     if (!r.ok) throw new Error(r.error);
+    if (valor(v.id + '-fecha') !== periodo) return;
     renderBd(v, r.rows);
     estadoBd(v, r.rows.length
       ? 'Se leyeron ' + r.rows.length + ' líneas de ' + v.nombre + ' · ' + nombrePeriodo(periodo) + '.'
