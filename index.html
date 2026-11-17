@@ -76,6 +76,17 @@
   <div id="aviso" class="alert alert-warning py-2" hidden></div>
   <div id="contenedor-vistas"></div>
 
+  <section id="vista-resumen" class="card-rc" hidden>
+    <h2>Resumen</h2>
+    <div class="row g-3 align-items-end">
+      <div class="col-sm-6 col-md-4 col-xl-3"><label class="form-label" for="res-periodo">Inventario (mes)</label><select class="form-select" id="res-periodo"></select></div>
+      <div class="col-auto"><button class="btn btn-rc" id="res-ver">Ver</button></div>
+    </div>
+    <div id="res-totales" class="mt-3"></div>
+    <h3>Detalle</h3>
+    <div class="table-responsive border rounded"><table class="table table-sm table-striped historial mb-0" id="res-tabla"></table></div>
+  </section>
+
   <section id="vista-mantenedor" class="card-rc" hidden>
     <h2>Mantenedor</h2>
     <div id="mant-login" class="row g-2 align-items-end" style="max-width: 460px;">
@@ -168,6 +179,13 @@ function hoyISO() {
   return d.toISOString().slice(0, 10);
 }
 
+function mesSugerido() {
+  var d = new Date();
+  var y = d.getFullYear(), m = d.getMonth() + 2;
+  if (m > 12) { m = 1; y++; }
+  return y + '-' + ('0' + m).slice(-2);
+}
+
 function mostrarAviso(texto) { var a = $('aviso'); a.textContent = texto; a.hidden = !texto; }
 
 function opcionesHtml(lista) {
@@ -254,7 +272,7 @@ function htmlVista(v) {
   '<section id="vista-' + v.id + '" class="card-rc" hidden>' +
   '  <h2>' + esc(v.nombre) + '</h2>' +
   '  <div class="row g-3">' +
-  '    <div class="col-sm-4 col-md-3 col-xl-2"><label class="form-label" for="' + p + 'fecha">Fecha</label><input type="date" class="form-control" id="' + p + 'fecha"></div>' +
+  '    <div class="col-sm-4 col-md-3 col-xl-2"><label class="form-label" for="' + p + 'fecha">Mes de inventario</label><input type="month" class="form-control" id="' + p + 'fecha"></div>' +
   '    <div class="col-sm-8 col-md-5 col-xl-4"><label class="form-label" for="' + p + 'jefe">Jefe de área</label><input class="form-control" list="dl-jefes" id="' + p + 'jefe" placeholder="Escribe o elige"></div>' +
   '  </div>' +
   '  <details class="trab mt-3">' +
@@ -271,8 +289,6 @@ function htmlVista(v) {
   '    <button class="btn btn-rc" id="' + p + 'btn">Guardar filas</button>' +
   '    <span id="' + p + 'msg" class="ms-2"></span>' +
   '  </div>' +
-  '  <h3>Últimos registros de esta vista</h3>' +
-  '  <div class="table-responsive border rounded"><table class="table table-sm table-striped historial mb-0" id="' + p + 'tabla"></table></div>' +
   '</section>';
 }
 
@@ -312,7 +328,7 @@ function leerCabecera(v) {
     var t = valor(p + 't' + i);
     if (t) trabajadores.push(t);
   }
-  return { vista: v.nombre, fecha: valor(p + 'fecha'), jefe: valor(p + 'jefe'), trabajadores: trabajadores };
+  return { vista: v.nombre, periodo: valor(p + 'fecha'), jefe: valor(p + 'jefe'), trabajadores: trabajadores };
 }
 
 function leerFilas(vid) {
@@ -344,9 +360,9 @@ function guardarFilas(v) {
   var filas = leerFilas(v.id).filter(function (f) { return !f.vacia; });
   msg.className = 'ms-2'; msg.textContent = '';
 
-  if (!cab.fecha || !cab.jefe) {
+  if (!cab.periodo || !cab.jefe) {
     msg.className = 'ms-2 msg-error';
-    msg.textContent = 'Falta la fecha o el jefe de área.';
+    msg.textContent = 'Falta el mes de inventario o el jefe de área.';
     return;
   }
   if (filas.length === 0) {
@@ -367,7 +383,6 @@ function guardarFilas(v) {
     if (i >= filas.length) {
       msg.className = 'ms-2 msg-ok';
       msg.textContent = 'Se guardaron ' + guardadas + ' filas.';
-      cargarRecientes(v);
       btn.disabled = false;
       return Promise.resolve();
     }
@@ -383,27 +398,73 @@ function guardarFilas(v) {
   siguiente(0).catch(function (e) {
     msg.className = 'ms-2 msg-error';
     msg.textContent = 'Se guardaron ' + guardadas + ' filas. Error en ' + e.message;
-    cargarRecientes(v);
     btn.disabled = false;
   });
 }
 
-function cargarRecientes(v) {
-  var tabla = $(v.id + '-tabla');
-  llamarGet({ action: 'recientes', vista: v.nombre }).then(function (r) {
+function cargarPeriodos() {
+  var sel = $('res-periodo');
+  return llamarGet({ action: 'periodos' }).then(function (r) {
     if (!r.ok) throw new Error(r.error);
-    var cab = COLUMNAS_TABLA.map(function (c) { return '<th>' + esc(c.nombre) + '</th>'; }).join('');
+    var anterior = sel.value;
+    sel.innerHTML = r.periodos.map(function (p) {
+      return '<option value="' + esc(p) + '">' + esc(nombrePeriodo(p)) + '</option>';
+    }).join('') || '<option value="">Sin inventarios aún</option>';
+    if (anterior && r.periodos.indexOf(anterior) >= 0) sel.value = anterior;
+    return r.periodos;
+  });
+}
+
+function nombrePeriodo(p) {
+  var meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var partes = String(p).split('-');
+  return (meses[parseInt(partes[1], 10) - 1] || partes[1]) + ' ' + partes[0];
+}
+
+function cargarResumen() {
+  var periodo = $('res-periodo').value;
+  var tabla = $('res-tabla'), totales = $('res-totales');
+  if (!periodo) {
+    tabla.innerHTML = '<tbody><tr><td>Sin inventarios registrados aún.</td></tr></tbody>';
+    totales.innerHTML = '';
+    return;
+  }
+  tabla.innerHTML = '<tbody><tr><td>Cargando...</td></tr></tbody>';
+  llamarGet({ action: 'registros', periodo: periodo }).then(function (r) {
+    if (!r.ok) throw new Error(r.error);
+    var cols = [
+      { i: 1, n: 'Vista' }, { i: 3, n: 'Jefe' }, { i: 14, n: 'Producto' }, { i: 15, n: 'Clase' },
+      { i: 16, n: 'Largo' }, { i: 17, n: 'Diámetro' }, { i: 18, n: 'Producción' }, { i: 19, n: 'Recuperación' },
+      { i: 20, n: 'Rechazo' }, { i: 21, n: 'Secado' }, { i: 22, n: 'Sector' }, { i: 23, n: 'Comentario' }
+    ];
+    var cab = cols.map(function (c) { return '<th>' + esc(c.n) + '</th>'; }).join('');
     var filas = r.rows.map(function (f) {
-      return '<tr>' + COLUMNAS_TABLA.map(function (c) {
-        var val = f[c.idx];
-        if (c.idx === 2 && val) val = String(val).slice(0, 10);
-        return '<td>' + esc(val) + '</td>';
-      }).join('') + '</tr>';
+      return '<tr>' + cols.map(function (c) { return '<td>' + esc(f[c.i]) + '</td>'; }).join('') + '</tr>';
     }).join('');
     tabla.innerHTML = '<thead><tr>' + cab + '</tr></thead><tbody>' +
-      (filas || '<tr><td>Sin registros aún</td></tr>') + '</tbody>';
+      (filas || '<tr><td>Sin registros en este inventario.</td></tr>') + '</tbody>';
+
+    var acum = {};
+    var orden = [];
+    r.rows.forEach(function (f) {
+      var v = f[1];
+      if (!acum[v]) { acum[v] = { lineas: 0, prod: 0, rec: 0, rech: 0 }; orden.push(v); }
+      acum[v].lineas++;
+      acum[v].prod += Number(f[18]) || 0;
+      acum[v].rec += Number(f[19]) || 0;
+      acum[v].rech += Number(f[20]) || 0;
+    });
+    var html = '<div class="table-responsive"><table class="table table-sm table-bordered mb-0"><thead><tr>' +
+      '<th>Vista</th><th>Líneas</th><th>Producción</th><th>Recuperación</th><th>Rechazo</th></tr></thead><tbody>';
+    orden.forEach(function (v) {
+      var a = acum[v];
+      html += '<tr><td>' + esc(v) + '</td><td>' + a.lineas + '</td><td>' + a.prod.toLocaleString('es-CL') +
+        '</td><td>' + a.rec.toLocaleString('es-CL') + '</td><td>' + a.rech.toLocaleString('es-CL') + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    totales.innerHTML = '<h3>Totales · ' + esc(nombrePeriodo(periodo)) + '</h3>' + html;
   }).catch(function (e) {
-    tabla.innerHTML = '<tbody><tr><td class="msg-error">No se pudieron cargar los registros: ' + esc(e.message) + '</td></tr></tbody>';
+    tabla.innerHTML = '<tbody><tr><td class="msg-error">No se pudo cargar: ' + esc(e.message) + '</td></tr></tbody>';
   });
 }
 
@@ -411,7 +472,7 @@ function montarVistas() {
   $('contenedor-vistas').innerHTML = VISTAS.map(htmlVista).join('');
   VISTAS.forEach(function (v) {
     var p = v.id + '-';
-    $(p + 'fecha').value = hoyISO();
+    $(p + 'fecha').value = mesSugerido();
     $(p + 'btn').addEventListener('click', function () { guardarFilas(v); });
     $(p + 'agregar').addEventListener('click', function () { agregarFilas(v.id, FILAS_NUEVAS); });
     $(p + 'filas').addEventListener('change', function (e) {
@@ -422,6 +483,7 @@ function montarVistas() {
 
 /* ==== NAVEGACION ==== */
 var SECCIONES = VISTAS.map(function (v) { return { id: 'vista-' + v.id, nombre: v.nombre }; });
+SECCIONES.push({ id: 'vista-resumen', nombre: 'Resumen' });
 SECCIONES.push({ id: 'vista-mantenedor', nombre: 'Mantenedor' });
 
 function mostrarSeccion(id) {
@@ -431,7 +493,7 @@ function mostrarSeccion(id) {
     if (b) b.classList.toggle('activo', s.id === id);
   });
   var v = VISTAS.filter(function (x) { return 'vista-' + x.id === id; })[0];
-  if (v) cargarRecientes(v);
+  if (id === 'vista-resumen') cargarPeriodos().then(cargarResumen).catch(function (e) { mostrarAviso(e.message); });
 }
 
 function montarNav() {
@@ -492,6 +554,8 @@ function guardarMantenedor() {
 function iniciar() {
   montarNav();
   montarVistas();
+  $('res-ver').addEventListener('click', cargarResumen);
+  $('res-periodo').addEventListener('change', cargarResumen);
   $('mant-entrar').addEventListener('click', entrarMantenedor);
   $('mant-clave').addEventListener('keydown', function (e) { if (e.key === 'Enter') entrarMantenedor(); });
   $('mant-guardar').addEventListener('click', guardarMantenedor);
