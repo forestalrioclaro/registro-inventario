@@ -69,6 +69,7 @@
   .spinner { width: 36px; height: 36px; margin: 0 auto 12px; border: 4px solid #e2e4e6; border-top-color: var(--rc-verde); border-radius: 50%; animation: girar .8s linear infinite; }
   @keyframes girar { to { transform: rotate(360deg); } }
   [hidden] { display: none !important; }
+  #rtd-tabla thead th { position: sticky; top: 0; background: #fff; z-index: 1; }
 </style>
 </head>
 <body>
@@ -117,7 +118,7 @@
       <div class="col-6 col-md-4 col-xl-2"><label class="form-label" for="rtd-f-diam">Diámetro</label><select class="form-select form-select-sm" id="rtd-f-diam"></select></div>
       <div class="col-6 col-md-4 col-xl-2"><label class="form-label" for="rtd-f-bodega">Bodega</label><select class="form-select form-select-sm" id="rtd-f-bodega"></select></div>
     </div>
-    <div class="table-responsive border rounded mt-3"><table class="table table-sm table-bordered mb-0" id="rtd-tabla"></table></div>
+    <div class="table-responsive border rounded mt-3" style="max-height:460px;overflow:auto"><table class="table table-sm table-bordered mb-0" id="rtd-tabla"></table></div>
     <h3 class="mt-4">Registros de la línea</h3>
     <p id="rtd-det-titulo" class="small text-secondary"></p>
     <div class="table-responsive border rounded"><table class="table table-sm table-bordered mb-0" id="rtd-detalle"></table></div>
