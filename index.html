@@ -125,6 +125,18 @@
         <button class="btn btn-rc" id="mant-guardar">Guardar mantenedor</button>
         <span id="mant-msg"></span>
       </div>
+      <hr class="my-4">
+      <h3>Bodegas</h3>
+      <p class="text-secondary">Clasificador por largo y diámetro. Cada fila es una combinación. Si un largo y diámetro no aparece aquí, el registro queda como "Sin Bodega".</p>
+      <div class="table-responsive border rounded">
+        <table class="table table-sm mb-0"><thead><tr><th>Largo</th><th>Diámetro</th><th>Bodega</th><th></th></tr></thead>
+        <tbody id="mb-filas"></tbody></table>
+      </div>
+      <div class="d-flex align-items-center flex-wrap gap-2 mt-3">
+        <button class="btn btn-rc-outline btn-sm" id="mb-agregar">Agregar bodega</button>
+        <button class="btn btn-rc" id="mb-guardar">Guardar bodegas</button>
+        <span id="mb-msg"></span>
+      </div>
     </div>
   </section>
 
@@ -699,6 +711,7 @@ function entrarMantenedor() {
     $('mant-login').hidden = true;
     $('mant-editor').hidden = false;
     cargarEditorMantenedor();
+    cargarEditorBodegas();
   }).catch(function (e) {
     $('mant-login-msg').textContent = 'Error de conexión: ' + e.message;
   });
@@ -724,6 +737,48 @@ function guardarMantenedor() {
   });
 }
 
+/* ==== MANTENEDOR: BODEGAS ==== */
+function filaBodegaHtml(b) {
+  return '<tr>' +
+    '<td><input class="form-control form-control-sm mb-largo" value="' + esc(b.largo) + '"></td>' +
+    '<td><input class="form-control form-control-sm mb-diam" value="' + esc(b.diametro) + '"></td>' +
+    '<td><input class="form-control form-control-sm mb-bod" value="' + esc(b.bodega) + '"></td>' +
+    '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger mb-quitar">Quitar</button></td>' +
+    '</tr>';
+}
+
+function cargarEditorBodegas() {
+  $('mb-filas').innerHTML = (LISTAS.bodegas || []).map(filaBodegaHtml).join('');
+  $('mb-msg').textContent = '';
+}
+
+function leerEditorBodegas() {
+  return Array.prototype.map.call($('mb-filas').querySelectorAll('tr'), function (tr) {
+    return {
+      largo: tr.querySelector('.mb-largo').value,
+      diametro: tr.querySelector('.mb-diam').value,
+      bodega: tr.querySelector('.mb-bod').value
+    };
+  });
+}
+
+function guardarBodegas() {
+  var msg = $('mb-msg');
+  $('mb-guardar').disabled = true;
+  msg.className = ''; msg.textContent = 'Guardando...';
+  llamarPost({ action: 'guardarBodegas', clave: claveActual, filas: leerEditorBodegas() }).then(function (r) {
+    if (!r.ok) throw new Error(r.error);
+    return cargarListas().then(function () {
+      cargarEditorBodegas();
+      msg.className = 'msg-ok'; msg.textContent = 'Bodegas guardadas (' + r.total + ').';
+    });
+  }).catch(function (e) {
+    msg.className = 'msg-error'; msg.textContent = 'No se guardó: ' + e.message;
+  }).then(function () {
+    $('mb-guardar').disabled = false;
+  });
+}
+
 /* ==== INICIO ==== */
 function iniciar() {
   montarNav();
@@ -733,6 +788,13 @@ function iniciar() {
   $('mant-entrar').addEventListener('click', entrarMantenedor);
   $('mant-clave').addEventListener('keydown', function (e) { if (e.key === 'Enter') entrarMantenedor(); });
   $('mant-guardar').addEventListener('click', guardarMantenedor);
+  $('mb-agregar').addEventListener('click', function () {
+    $('mb-filas').insertAdjacentHTML('beforeend', filaBodegaHtml({ largo: '', diametro: '', bodega: '' }));
+  });
+  $('mb-guardar').addEventListener('click', guardarBodegas);
+  $('mb-filas').addEventListener('click', function (e) {
+    if (e.target.classList.contains('mb-quitar')) e.target.closest('tr').remove();
+  });
 
   cargarListas().catch(function (e) {
     mostrarAviso('No se pudieron cargar las listas del mantenedor: ' + e.message);
