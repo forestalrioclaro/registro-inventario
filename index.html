@@ -852,7 +852,7 @@ function opcionesFiltroRTD(f) {
 function llenarFiltrosRTD() {
   FILTROS_RTD.forEach(function (f) {
     var sel = $(f.id);
-    var anterior = sel.value;
+    var anterior = sel.options.length ? sel.value : '*';
     sel.innerHTML = opcionesFiltroRTD(f);
     sel.value = Array.prototype.some.call(sel.options, function (o) { return o.value === anterior; }) ? anterior : '*';
   });
