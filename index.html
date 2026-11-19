@@ -858,6 +858,7 @@ function pintarResumenTD() {
     grupos[clave].vals[d.producto] = (grupos[clave].vals[d.producto] || 0) + medidasRTD(d);
     grupos[clave].regs.push(d);
   });
+  lista = lista.filter(function (g) { return cols.some(function (c) { return g.vals[c]; }); });
   lista.sort(function (a, b) {
     var pa = TIPOS_TD.indexOf(a.producto), pb = TIPOS_TD.indexOf(b.producto);
     if (pa !== pb) return pa - pb;
