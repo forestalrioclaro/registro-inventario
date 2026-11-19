@@ -103,6 +103,7 @@
     <div class="row g-3 align-items-end">
       <div class="col-sm-6 col-md-4 col-xl-3"><label class="form-label" for="res-periodo">Inventario (mes)</label><select class="form-select" id="res-periodo"></select></div>
       <div class="col-auto"><button class="btn btn-rc" id="res-ver">Ver</button></div>
+      <div class="col-auto"><button class="btn btn-rc-outline" id="res-exportar">Exportar a Excel</button></div>
     </div>
     <div id="res-totales" class="mt-3"></div>
     <h3>Detalle</h3>
@@ -558,6 +559,30 @@ function nombrePeriodo(p) {
   return (meses[parseInt(partes[1], 10) - 1] || partes[1]) + ' ' + partes[0];
 }
 
+var RES_COLS = [
+  { i: 1, n: 'Vista' }, { i: 3, n: 'Jefe' }, { i: 14, n: 'Producto' }, { i: 15, n: 'Clase' },
+  { i: 16, n: 'Largo' }, { i: 17, n: 'Diámetro' }, { i: 18, n: 'Producción' }, { i: 19, n: 'Recuperación' },
+  { i: 20, n: 'Rechazo' }, { i: 21, n: 'Secado' }, { i: 22, n: 'Sector' }, { i: 23, n: 'Comentario' }
+];
+var RES_FILAS = [];
+var RES_PERIODO = '';
+
+function exportarConsolidacion() {
+  if (!RES_FILAS.length) { mostrarAviso('No hay datos para exportar. Elige un inventario primero.'); return; }
+  if (typeof XLSX === 'undefined') { mostrarAviso('No se pudo cargar el módulo de Excel. Recarga la página.'); return; }
+  var aoa = [RES_COLS.map(function (c) { return c.n; })].concat(RES_FILAS.map(function (f) {
+    return RES_COLS.map(function (c) {
+      var x = f[c.i];
+      if (x === null || x === undefined || x === '') return '';
+      if (c.i >= 18 && c.i <= 20) return Number(x);
+      return x;
+    });
+  }));
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'Consolidación');
+  XLSX.writeFile(wb, 'Consolidacion_' + RES_PERIODO + '.xlsx');
+}
+
 function cargarResumen() {
   var periodo = $('res-periodo').value;
   var tabla = $('res-tabla'), totales = $('res-totales');
@@ -569,11 +594,9 @@ function cargarResumen() {
   tabla.innerHTML = '<tbody><tr><td>Cargando...</td></tr></tbody>';
   llamarGet({ action: 'registros', periodo: periodo }).then(function (r) {
     if (!r.ok) throw new Error(r.error);
-    var cols = [
-      { i: 1, n: 'Vista' }, { i: 3, n: 'Jefe' }, { i: 14, n: 'Producto' }, { i: 15, n: 'Clase' },
-      { i: 16, n: 'Largo' }, { i: 17, n: 'Diámetro' }, { i: 18, n: 'Producción' }, { i: 19, n: 'Recuperación' },
-      { i: 20, n: 'Rechazo' }, { i: 21, n: 'Secado' }, { i: 22, n: 'Sector' }, { i: 23, n: 'Comentario' }
-    ];
+    var cols = RES_COLS;
+    RES_FILAS = r.rows;
+    RES_PERIODO = periodo;
     var cab = cols.map(function (c) { return '<th>' + esc(c.n) + '</th>'; }).join('');
     var filas = r.rows.map(function (f) {
       return '<tr>' + cols.map(function (c) { return '<td>' + esc(f[c.i]) + '</td>'; }).join('') + '</tr>';
@@ -1180,6 +1203,7 @@ function iniciar() {
   montarVistas();
   $('res-ver').addEventListener('click', cargarResumen);
   $('res-periodo').addEventListener('change', cargarResumen);
+  $('res-exportar').addEventListener('click', exportarConsolidacion);
   $('rtd-ver').addEventListener('click', cargarResumenTD);
   $('rtd-periodo').addEventListener('change', cargarResumenTD);
   $('rtd-exportar').addEventListener('click', exportarResumenTD);
