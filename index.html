@@ -303,7 +303,7 @@ function filaHtml(vid, n) {
     } else if (col.tipo === 'dl') {
       h += '<td><input class="form-control form-control-sm ' + clase + '" type="text" list="dl-d-' + id + '" autocomplete="off"></td>';
     } else if (col.tipo === 'num') {
-      h += '<td><input class="form-control form-control-sm ' + clase + '" type="number" min="0" step="1"></td>';
+      h += '<td><input class="form-control form-control-sm num-in ' + clase + '" type="text" inputmode="numeric" autocomplete="off"></td>';
     } else {
       h += '<td><input class="form-control form-control-sm ' + clase + '" type="text" autocomplete="off"></td>';
     }
@@ -355,6 +355,19 @@ function valorFila(tr, clase) {
   return el ? (el.value || '').trim() : '';
 }
 
+// Miles con punto (es-CL): 37.800 <-> 37800. Solo cambia números enteros con separador de miles.
+function formatoMiles(s) {
+  var t = String(s === null || s === undefined ? '' : s).trim();
+  if (/^\d{1,3}(\.\d{3})+$/.test(t) || /^\d+$/.test(t)) return Number(t.replace(/\./g, '')).toLocaleString('es-CL');
+  return t;
+}
+
+function numeroDesdeInput(s) {
+  var t = String(s === null || s === undefined ? '' : s).trim();
+  if (/^\d{1,3}(\.\d{3})+$/.test(t)) return t.replace(/\./g, '');
+  return t;
+}
+
 function actualizarDiamFila(tr) {
   var dl = tr.querySelector('datalist');
   if (!dl) return;
@@ -398,6 +411,7 @@ function leerFilas(vid) {
     var vacia = true;
     COLUMNAS_CARGA.forEach(function (col) {
       var val = valorFila(tr, col.c);
+      if (col.tipo === 'num') val = numeroDesdeInput(val);
       datos[col.c] = val;
       if (val !== '') vacia = false;
     });
@@ -579,7 +593,14 @@ function exportarConsolidacion() {
     });
   }));
   var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'Consolidación');
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  for (var fr = 1; fr < aoa.length; fr++) {
+    for (var cc = 6; cc <= 8; cc++) {
+      var celda = ws[XLSX.utils.encode_cell({ r: fr, c: cc })];
+      if (celda && typeof celda.v === 'number') celda.z = '#,##0';
+    }
+  }
+  XLSX.utils.book_append_sheet(wb, ws, 'Consolidación');
   XLSX.writeFile(wb, 'Consolidacion_' + RES_PERIODO + '.xlsx');
 }
 
@@ -600,7 +621,7 @@ function cargarResumen() {
     RES_PERIODO = periodo;
     var cab = cols.map(function (c) { return '<th>' + esc(c.n) + '</th>'; }).join('');
     var filas = r.rows.map(function (f) {
-      return '<tr>' + cols.map(function (c) { return '<td>' + esc(f[c.i]) + '</td>'; }).join('') + '</tr>';
+      return '<tr>' + cols.map(function (c) { return '<td>' + esc(c.i >= 18 && c.i <= 20 ? formatoMiles(f[c.i]) : f[c.i]) + '</td>'; }).join('') + '</tr>';
     }).join('');
     tabla.innerHTML = '<thead><tr>' + cab + '</tr></thead><tbody>' +
       (filas || '<tr><td>Sin registros en este inventario.</td></tr>') + '</tbody>';
@@ -679,7 +700,7 @@ function ponerValores(tr, reg) {
     if (el.tagName === 'SELECT' && d[c] && !Array.prototype.some.call(el.options, function (o) { return o.value === d[c]; })) {
       el.insertAdjacentHTML('beforeend', '<option value="' + esc(d[c]) + '">' + esc(d[c]) + '</option>');
     }
-    el.value = d[c];
+    el.value = el.classList.contains('num-in') ? formatoMiles(d[c]) : d[c];
   });
 }
 
@@ -1202,6 +1223,9 @@ function guardarBodegas() {
 /* ==== INICIO ==== */
 function iniciar() {
   montarNav();
+  document.addEventListener('focusout', function (e) {
+    if (e.target.classList && e.target.classList.contains('num-in')) e.target.value = formatoMiles(e.target.value);
+  });
   montarVistas();
   $('res-ver').addEventListener('click', cargarResumen);
   $('res-periodo').addEventListener('change', cargarResumen);
