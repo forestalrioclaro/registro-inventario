@@ -592,6 +592,7 @@ function cargarResumen() {
     return;
   }
   tabla.innerHTML = '<tbody><tr><td>Cargando...</td></tr></tbody>';
+  mostrarOverlay('Leyendo registros de Consolidación…');
   llamarGet({ action: 'registros', periodo: periodo }).then(function (r) {
     if (!r.ok) throw new Error(r.error);
     var cols = RES_COLS;
@@ -625,7 +626,7 @@ function cargarResumen() {
     totales.innerHTML = '<h3>Totales · ' + esc(nombrePeriodo(periodo)) + '</h3>' + html;
   }).catch(function (e) {
     tabla.innerHTML = '<tbody><tr><td class="msg-error">No se pudo cargar: ' + esc(e.message) + '</td></tr></tbody>';
-  });
+  }).then(ocultarOverlay);
 }
 
 function montarVistas() {
@@ -990,6 +991,7 @@ function cargarResumenTD() {
     return Promise.resolve();
   }
   $('rtd-msg').textContent = 'Cargando...';
+  mostrarOverlay('Leyendo registros de Resumen…');
   return llamarGet({ action: 'registros', periodo: periodo }).then(function (r) {
     if (!r.ok) throw new Error(r.error);
     cargarBodegasRTD();
@@ -999,7 +1001,7 @@ function cargarResumenTD() {
     $('rtd-msg').textContent = RTD_DATOS.length + ' líneas · ' + nombrePeriodo(periodo);
   }).catch(function (e) {
     $('rtd-msg').textContent = 'No se pudo cargar: ' + e.message;
-  });
+  }).then(ocultarOverlay);
 }
 
 /* ==== NAVEGACION ==== */
