@@ -1313,8 +1313,10 @@ function guardarBodegas() {
 /* ==== INICIO ==== */
 function iniciarApp() {
   montarNav();
-  if (USUARIO.rol !== 'admin') document.querySelector('[data-sec="vista-usuarios"]').hidden = true;
-  if (USUARIO.rol === 'lector') document.querySelector('[data-sec="vista-mantenedor"]').hidden = true;
+  var botonUsuarios = document.querySelector('[data-sec="vista-usuarios"]');
+  if (botonUsuarios && USUARIO.rol !== 'admin') botonUsuarios.hidden = true;
+  var botonMant = document.querySelector('[data-sec="vista-mantenedor"]');
+  if (botonMant && USUARIO.rol === 'lector') botonMant.hidden = true;
   $('usuario-info').textContent = (USUARIO.nombre || USUARIO.email) + ' · ' + USUARIO.rol;
   $('usuario-box').hidden = false;
   $('cerrar-sesion').addEventListener('click', function () {
