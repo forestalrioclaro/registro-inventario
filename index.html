@@ -1387,7 +1387,7 @@ function alIngresar(resp) {
 
 function mostrarLogin() {
   if (!window.google || !google.accounts || !google.accounts.id) { setTimeout(mostrarLogin, 300); return; }
-  google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: alIngresar, auto_select: false });
+  google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: alIngresar, auto_select: true, cancel_on_tap_outside: false });
   google.accounts.id.renderButton($('login-boton'), { theme: 'outline', size: 'large', text: 'signin_with', locale: 'es', shape: 'pill', width: 300 });
   $('login').hidden = false;
 }
