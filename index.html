@@ -101,7 +101,13 @@
     <div class="row g-3 align-items-end">
       <div class="col-sm-6 col-md-4 col-xl-3"><label class="form-label" for="rtd-periodo">Inventario (mes)</label><select class="form-select" id="rtd-periodo"></select></div>
       <div class="col-auto"><button class="btn btn-rc" id="rtd-ver">Ver</button></div>
+      <div class="col-auto"><button class="btn btn-rc-outline" id="rtd-exportar">Exportar a Excel</button></div>
       <div class="col-auto"><span id="rtd-msg" class="small text-secondary"></span></div>
+    </div>
+    <div class="d-flex flex-wrap gap-4 mt-3" id="rtd-medidas">
+      <div class="form-check"><input class="form-check-input" type="checkbox" id="rtd-m-prod" checked><label class="form-check-label" for="rtd-m-prod">Producción</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" id="rtd-m-rec" checked><label class="form-check-label" for="rtd-m-rec">Recuperación</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" id="rtd-m-rech"><label class="form-check-label" for="rtd-m-rech">Rechazo</label></div>
     </div>
     <div class="row g-2 mt-1">
       <div class="col-6 col-md-4 col-xl-2"><label class="form-label" for="rtd-f-tipo">Tipo</label><select class="form-select form-select-sm" id="rtd-f-tipo"></select></div>
@@ -112,6 +118,9 @@
       <div class="col-6 col-md-4 col-xl-2"><label class="form-label" for="rtd-f-bodega">Bodega</label><select class="form-select form-select-sm" id="rtd-f-bodega"></select></div>
     </div>
     <div class="table-responsive border rounded mt-3"><table class="table table-sm table-bordered mb-0" id="rtd-tabla"></table></div>
+    <h3 class="mt-4">Registros de la línea</h3>
+    <p id="rtd-det-titulo" class="small text-secondary"></p>
+    <div class="table-responsive border rounded"><table class="table table-sm table-bordered mb-0" id="rtd-detalle"></table></div>
   </section>
 
   <section id="vista-mantenedor" class="card-rc" hidden>
@@ -165,6 +174,7 @@
 <datalist id="dl-jefes"></datalist>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script>
 /* ==== CONFIGURACION ==== */
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxEiJkLVXE1Ragx7C3S62YaUZkocdihBlMsGwoc_BmAix65_O_91MUwGbbobY5hNkOeQ/exec';
@@ -685,6 +695,8 @@ function cargarRegistrosVista(v) {
 
 /* ==== RESUMEN (TABLA DINAMICA) ==== */
 var TIPOS_TD = ['RCC', 'RC', 'RCI', 'RD', 'RDI'];
+var COLOR_TD = { RCC: '#e8f5e9', RC: '#e3f2fd', RCI: '#fff8e1', RD: '#f3e5f5', RDI: '#fbe9e7' };
+var COLOR_TD_XLS = { RCC: 'FFE8F5E9', RC: 'FFE3F2FD', RCI: 'FFFFF8E1', RD: 'FFF3E5F5', RDI: 'FFFBE9E7' };
 var FILTROS_RTD = [
   { id: 'rtd-f-tipo', campo: 'producto', todos: 'Todos los tipos' },
   { id: 'rtd-f-jefe', campo: 'jefe', todos: 'Todos los jefes' },
@@ -695,6 +707,8 @@ var FILTROS_RTD = [
 ];
 var RTD_DATOS = [];
 var RTD_BODEGAS = {};
+var RTD_VISTA = null;
+var RTD_CLAVE_SEL = null;
 
 function limpiarClaseRTD(v) {
   var t = String(v === null || v === undefined ? '' : v).trim();
@@ -719,7 +733,11 @@ function filaRTD(f) {
     clase: limpiarClaseRTD(f[15]),
     largo: largo,
     diametro: diam,
-    valor: (Number(f[18]) || 0) + (Number(f[19]) || 0),
+    prod: Number(f[18]) || 0,
+    rec: Number(f[19]) || 0,
+    rech: Number(f[20]) || 0,
+    sector: String(f[22] || ''),
+    comentario: String(f[23] || ''),
     bodega: RTD_BODEGAS[largo + ' x ' + diam] || 'Sin Bodega'
   };
 }
@@ -744,7 +762,7 @@ function cargarPeriodosRTD() {
 function opcionesFiltroRTD(f) {
   var vals = [];
   RTD_DATOS.forEach(function (d) { if (vals.indexOf(d[f.campo]) < 0) vals.push(d[f.campo]); });
-  if (f.campo === 'producto') vals = TIPOS_TD.filter(function (t) { return true; });
+  if (f.campo === 'producto') vals = TIPOS_TD.slice();
   else if (f.campo === 'largo') vals.sort(function (a, b) { return numeroLargoRTD(a) - numeroLargoRTD(b); });
   else vals.sort(function (a, b) { return String(a).localeCompare(String(b), 'es'); });
   var html = '<option value="*">' + esc(f.todos) + '</option>';
@@ -771,8 +789,58 @@ function pasaFiltrosRTD(d) {
   });
 }
 
+function medidasRTD(d) {
+  var s = 0;
+  if ($('rtd-m-prod').checked) s += d.prod;
+  if ($('rtd-m-rec').checked) s += d.rec;
+  if ($('rtd-m-rech').checked) s += d.rech;
+  return s;
+}
+
+function textoMedidasRTD() {
+  var t = [];
+  if ($('rtd-m-prod').checked) t.push('Producción');
+  if ($('rtd-m-rec').checked) t.push('Recuperación');
+  if ($('rtd-m-rech').checked) t.push('Rechazo');
+  return t.length ? t.join(' + ') : 'ninguna';
+}
+
+function textoFiltrosRTD() {
+  var t = [];
+  FILTROS_RTD.forEach(function (f) {
+    var sel = $(f.id);
+    if (sel.value !== '*') t.push(f.campo + ': ' + sel.options[sel.selectedIndex].text);
+  });
+  return t.length ? t.join(' · ') : 'sin filtros';
+}
+
 function fmtRTD(v) {
   return Math.round(v).toLocaleString('es-CL');
+}
+
+function limpiarDetalleRTD() {
+  $('rtd-det-titulo').textContent = 'Haz clic en una línea del resumen para ver los registros que suma.';
+  $('rtd-detalle').innerHTML = '';
+}
+
+function mostrarDetalleRTD(g) {
+  $('rtd-det-titulo').textContent = g.etiqueta + ' · largo ' + g.largo + ' · diámetro ' + g.diametro + ' · ' + g.bodega +
+    ' — ' + g.regs.length + ' registros (' + textoMedidasRTD() + ')';
+  var cab = ['Vista', 'Jefe de área', 'Producto / Clase', 'Largo', 'Diámetro', 'Bodega', 'Producción', 'Recuperación', 'Rechazo', 'Sector', 'Comentario', 'Total']
+    .map(function (t, i) { return '<th' + (i >= 6 && i <= 8 || i === 11 ? ' class="text-end"' : '') + '>' + t + '</th>'; }).join('');
+  var sp = 0, sr = 0, sj = 0, st = 0;
+  var cuerpo = g.regs.map(function (d) {
+    sp += d.prod; sr += d.rec; sj += d.rech; st += medidasRTD(d);
+    return '<tr><td>' + esc(d.vista) + '</td><td>' + esc(d.jefe) + '</td><td>' +
+      esc(d.producto + (d.clase ? ' ' + d.clase.toUpperCase() : '')) + '</td><td>' + esc(d.largo) + '</td><td>' +
+      esc(d.diametro) + '</td><td>' + esc(d.bodega) + '</td><td class="text-end">' + fmtRTD(d.prod) +
+      '</td><td class="text-end">' + fmtRTD(d.rec) + '</td><td class="text-end">' + fmtRTD(d.rech) + '</td><td>' +
+      esc(d.sector) + '</td><td>' + esc(d.comentario) + '</td><td class="text-end fw-bold">' + fmtRTD(medidasRTD(d)) + '</td></tr>';
+  }).join('');
+  var pie = '<tr><td colspan="6" class="fw-bold">Total</td><td class="text-end fw-bold">' + fmtRTD(sp) +
+    '</td><td class="text-end fw-bold">' + fmtRTD(sr) + '</td><td class="text-end fw-bold">' + fmtRTD(sj) +
+    '</td><td colspan="2"></td><td class="text-end fw-bold">' + fmtRTD(st) + '</td></tr>';
+  $('rtd-detalle').innerHTML = '<thead><tr>' + cab + '</tr></thead><tbody>' + cuerpo + '</tbody><tfoot>' + pie + '</tfoot>';
 }
 
 function pintarResumenTD() {
@@ -784,10 +852,11 @@ function pintarResumenTD() {
     var etiqueta = d.producto + (d.clase ? ' ' + d.clase.toUpperCase() : '');
     var clave = etiqueta + '|' + d.largo + '|' + d.diametro + '|' + d.bodega;
     if (!grupos[clave]) {
-      grupos[clave] = { etiqueta: etiqueta, clase: d.clase, producto: d.producto, largo: d.largo, diametro: d.diametro, bodega: d.bodega, vals: {} };
+      grupos[clave] = { clave: clave, etiqueta: etiqueta, clase: d.clase, producto: d.producto, largo: d.largo, diametro: d.diametro, bodega: d.bodega, vals: {}, regs: [] };
       lista.push(grupos[clave]);
     }
-    grupos[clave].vals[d.producto] = (grupos[clave].vals[d.producto] || 0) + d.valor;
+    grupos[clave].vals[d.producto] = (grupos[clave].vals[d.producto] || 0) + medidasRTD(d);
+    grupos[clave].regs.push(d);
   });
   lista.sort(function (a, b) {
     var pa = TIPOS_TD.indexOf(a.producto), pb = TIPOS_TD.indexOf(b.producto);
@@ -802,30 +871,95 @@ function pintarResumenTD() {
     '<th class="text-end">Total</th>';
   var totCol = {}, totGeneral = 0;
   cols.forEach(function (c) { totCol[c] = 0; });
-  var cuerpo = lista.map(function (g) {
-    var fila = '<td>' + esc(g.etiqueta) + '</td><td>' + esc(g.largo) + '</td><td>' + esc(g.diametro) + '</td><td>' + esc(g.bodega) + '</td>';
+  var filas = lista.map(function (g, i) {
+    var celdas = '<td>' + esc(g.etiqueta) + '</td><td>' + esc(g.largo) + '</td><td>' + esc(g.diametro) + '</td><td>' + esc(g.bodega) + '</td>';
     var suma = 0;
     cols.forEach(function (c) {
       var v = g.vals[c];
-      if (v) { totCol[c] += v; suma += v; fila += '<td class="text-end">' + fmtRTD(v) + '</td>'; }
-      else { fila += '<td></td>'; }
+      if (v) { totCol[c] += v; suma += v; celdas += '<td class="text-end">' + fmtRTD(v) + '</td>'; }
+      else { celdas += '<td></td>'; }
     });
     totGeneral += suma;
-    return '<tr>' + fila + '<td class="text-end fw-bold">' + fmtRTD(suma) + '</td></tr>';
+    var neg = RTD_CLAVE_SEL === g.clave ? ' fw-bold' : '';
+    return '<tr class="rtd-fila' + neg + '" data-i="' + i + '" style="background:' + COLOR_TD[g.producto] + ';cursor:pointer">' +
+      celdas + '<td class="text-end fw-bold">' + fmtRTD(suma) + '</td></tr>';
   }).join('');
   var pie = '<td colspan="4" class="fw-bold">Total</td>' +
     cols.map(function (c) { return '<td class="text-end fw-bold">' + fmtRTD(totCol[c]) + '</td>'; }).join('') +
     '<td class="text-end fw-bold">' + fmtRTD(totGeneral) + '</td>';
+  RTD_VISTA = { cols: cols, grupos: lista, totCol: totCol, totGeneral: totGeneral };
   $('rtd-tabla').innerHTML = '<thead><tr>' + cab + '</tr></thead>' +
-    '<tbody>' + (cuerpo || '<tr><td colspan="' + (5 + cols.length) + '">Sin registros con estos filtros.</td></tr>') + '</tbody>' +
-    (cuerpo ? '<tfoot><tr>' + pie + '</tr></tfoot>' : '');
+    '<tbody>' + (filas || '<tr><td colspan="' + (5 + cols.length) + '">Sin registros con estos filtros.</td></tr>') + '</tbody>' +
+    (filas ? '<tfoot><tr>' + pie + '</tr></tfoot>' : '');
+
+  var seleccionado = RTD_CLAVE_SEL ? lista.filter(function (g) { return g.clave === RTD_CLAVE_SEL; })[0] : null;
+  if (seleccionado) mostrarDetalleRTD(seleccionado);
+  else { RTD_CLAVE_SEL = null; limpiarDetalleRTD(); }
+}
+
+function exportarResumenTD() {
+  var msg = $('rtd-msg');
+  if (!RTD_VISTA || !RTD_VISTA.grupos.length) { msg.textContent = 'No hay datos para exportar. Carga un inventario primero.'; return; }
+  if (typeof XLSX === 'undefined') { msg.textContent = 'No se pudo cargar el módulo de Excel. Revisa tu conexión y recarga la página.'; return; }
+  var v = RTD_VISTA;
+  var periodo = $('rtd-periodo').value;
+  var aoa = [
+    ['Resumen · ' + nombrePeriodo(periodo)],
+    ['Medidas: ' + textoMedidasRTD()],
+    ['Filtros: ' + textoFiltrosRTD()],
+    []
+  ];
+  var hdr = aoa.length;
+  aoa.push(['Producto / Clase', 'Largo', 'Diámetro', 'Bodega'].concat(v.cols, ['Total']));
+  v.grupos.forEach(function (g) {
+    var fila = [g.etiqueta, g.largo, g.diametro, g.bodega];
+    var suma = 0;
+    v.cols.forEach(function (c) { var x = g.vals[c] || 0; suma += x; fila.push(x ? Math.round(x) : ''); });
+    fila.push(Math.round(suma));
+    aoa.push(fila);
+  });
+  var pie = ['Total', '', '', ''];
+  v.cols.forEach(function (c) { pie.push(Math.round(v.totCol[c])); });
+  pie.push(Math.round(v.totGeneral));
+  aoa.push(pie);
+
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  var ncols = 4 + v.cols.length + 1;
+  var estiloCab = { font: { bold: true, color: { rgb: 'FFFFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: 'FF00B255' } } };
+  for (var c = 0; c < ncols; c++) {
+    var a = XLSX.utils.encode_cell({ r: hdr, c: c });
+    if (ws[a]) ws[a].s = estiloCab;
+  }
+  v.grupos.forEach(function (g, i) {
+    var r = hdr + 1 + i;
+    for (var c = 0; c < ncols; c++) {
+      var a = XLSX.utils.encode_cell({ r: r, c: c });
+      if (!ws[a]) continue;
+      ws[a].s = { fill: { patternType: 'solid', fgColor: { rgb: COLOR_TD_XLS[g.producto] } } };
+      if (c >= 4) ws[a].z = '#,##0';
+    }
+  });
+  var rt = hdr + 1 + v.grupos.length;
+  for (var k = 0; k < ncols; k++) {
+    var b = XLSX.utils.encode_cell({ r: rt, c: k });
+    if (!ws[b]) continue;
+    ws[b].s = { font: { bold: true } };
+    if (k >= 4) ws[b].z = '#,##0';
+  }
+  ws['!cols'] = [{ wch: 20 }, { wch: 8 }, { wch: 16 }, { wch: 16 }].concat(v.cols.map(function () { return { wch: 12 }; }), [{ wch: 12 }]);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
+  XLSX.writeFile(wb, 'Resumen_' + periodo + '.xlsx');
+  msg.textContent = 'Excel exportado.';
 }
 
 function cargarResumenTD() {
   var periodo = $('rtd-periodo').value;
+  RTD_CLAVE_SEL = null;
   if (!periodo) {
     $('rtd-msg').textContent = 'Sin inventarios registrados aún.';
     $('rtd-tabla').innerHTML = '';
+    limpiarDetalleRTD();
     return Promise.resolve();
   }
   $('rtd-msg').textContent = 'Cargando...';
@@ -964,6 +1098,14 @@ function iniciar() {
   $('res-periodo').addEventListener('change', cargarResumen);
   $('rtd-ver').addEventListener('click', cargarResumenTD);
   $('rtd-periodo').addEventListener('change', cargarResumenTD);
+  $('rtd-exportar').addEventListener('click', exportarResumenTD);
+  ['rtd-m-prod', 'rtd-m-rec', 'rtd-m-rech'].forEach(function (id) { $(id).addEventListener('change', pintarResumenTD); });
+  $('rtd-tabla').addEventListener('click', function (e) {
+    var tr = e.target.closest('tr.rtd-fila');
+    if (!tr || !RTD_VISTA) return;
+    RTD_CLAVE_SEL = RTD_VISTA.grupos[Number(tr.getAttribute('data-i'))].clave;
+    pintarResumenTD();
+  });
   FILTROS_RTD.forEach(function (f) { $(f.id).addEventListener('change', pintarResumenTD); });
   $('mant-entrar').addEventListener('click', entrarMantenedor);
   $('mant-clave').addEventListener('keydown', function (e) { if (e.key === 'Enter') entrarMantenedor(); });
