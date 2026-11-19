@@ -70,6 +70,17 @@
   @keyframes girar { to { transform: rotate(360deg); } }
   [hidden] { display: none !important; }
   #rtd-tabla thead th { position: sticky; top: 0; background: #fff; z-index: 1; }
+  .mant-card { border: 1px solid #dee2e6; border-radius: 6px; overflow: hidden; background: #fff; height: 100%; display: flex; flex-direction: column; }
+  .mant-head { background: #00B255; color: #fff; font-weight: 700; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; }
+  .mant-cuenta { font-size: 12px; font-weight: 600; }
+  .mant-body { flex: 1; max-height: 300px; overflow-y: auto; }
+  .mant-fila { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; border-bottom: 1px solid #eef0f2; }
+  .mant-inactiva .mant-valor { text-decoration: line-through; color: #898A8D; }
+  .mant-check { font-size: 13px; color: #6c757d; margin: 0; white-space: nowrap; }
+  .mant-check input { margin-right: 4px; accent-color: #00B255; }
+  .mant-pie { display: flex; gap: 6px; padding: 8px; background: #f3f4f5; }
+  .mant-pie .mant-nuevo { flex: 1; min-width: 0; }
+  .mant-vacio { padding: 10px 12px; color: #898A8D; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -137,19 +148,10 @@
       <div class="col-12"><p id="mant-login-msg" class="msg-error mb-0"></p></div>
     </div>
     <div id="mant-editor" class="bloque-mant" hidden>
-      <p class="text-secondary">Escribe un valor por línea. Al guardar, reemplaza la lista completa.</p>
-      <div class="row g-3">
-        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-jefes">Jefes de área</label><textarea class="form-control" id="m-jefes"></textarea></div>
-        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-productos">Productos</label><textarea class="form-control" id="m-productos"></textarea></div>
-        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-clases">Clases</label><textarea class="form-control" id="m-clases"></textarea></div>
-        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-largos">Largos</label><textarea class="form-control" id="m-largos"></textarea></div>
-        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-diamRCC">Diámetro RCC</label><textarea class="form-control" id="m-diamRCC"></textarea></div>
-        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-diamRC">Diámetro RC / RCI</label><textarea class="form-control" id="m-diamRC"></textarea></div>
-        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-diamRD">Diámetro RD / RDI</label><textarea class="form-control" id="m-diamRD"></textarea></div>
-        <div class="col-md-6 col-lg-3"><label class="form-label" for="m-secado">Nivel de secado</label><textarea class="form-control" id="m-secado"></textarea></div>
-      </div>
+      <p class="text-secondary">Desmarca «Activa» para que un valor deje de aparecer en los desplegables (el historial se conserva). Para agregar, escribe el nombre y presiona «Agregar».</p>
+      <div class="row g-3" id="mant-cards"></div>
       <div class="d-flex align-items-center gap-3 mt-3">
-        <button class="btn btn-rc" id="mant-guardar">Guardar mantenedor</button>
+        <button class="btn btn-rc" id="mant-guardar">Guardar cambios</button>
         <span id="mant-msg"></span>
       </div>
       <hr class="my-4">
@@ -1007,12 +1009,92 @@ function montarNav() {
 
 /* ==== MANTENEDOR ==== */
 var CAMPOS_MANT = [
-  ['m-jefes','jefes'], ['m-productos','productos'], ['m-clases','clases'], ['m-largos','largos'],
-  ['m-diamRCC','diamRCC'], ['m-diamRC','diamRC'], ['m-diamRD','diamRD'], ['m-secado','secado']
+  { k: 'jefes', t: 'Jefes de área' },
+  { k: 'productos', t: 'Productos' },
+  { k: 'clases', t: 'Clases' },
+  { k: 'largos', t: 'Largos' },
+  { k: 'diamRCC', t: 'Diámetro RCC' },
+  { k: 'diamRC', t: 'Diámetro RC / RCI' },
+  { k: 'diamRD', t: 'Diámetro RD / RDI' },
+  { k: 'secado', t: 'Nivel de secado' }
 ];
+var MANT_ITEMS = {};
+
+function copiarItemsMant() {
+  MANT_ITEMS = {};
+  CAMPOS_MANT.forEach(function (c) {
+    var origen = (LISTAS.mantenedor && LISTAS.mantenedor[c.k]) || [];
+    MANT_ITEMS[c.k] = origen.map(function (it) {
+      return { valor: String(it.valor), activa: it.activa !== false };
+    });
+  });
+}
+
+function tarjetaMantHtml(c) {
+  var items = MANT_ITEMS[c.k] || [];
+  var activas = items.filter(function (it) { return it.activa; }).length;
+  var filas = items.map(function (it, i) {
+    return '<div class="mant-fila' + (it.activa ? '' : ' mant-inactiva') + '">' +
+      '<span class="mant-valor">' + esc(it.valor) + '</span>' +
+      '<label class="mant-check"><input type="checkbox" class="mant-act" data-k="' + c.k + '" data-i="' + i + '"' +
+      (it.activa ? ' checked' : '') + '> Activa</label>' +
+      '</div>';
+  }).join('');
+  return '<div class="col-md-6 col-lg-4"><div class="mant-card">' +
+    '<div class="mant-head"><span>' + esc(c.t) + '</span><span class="mant-cuenta">' + activas + ' activas</span></div>' +
+    '<div class="mant-body">' + (filas || '<div class="mant-vacio">Sin valores</div>') + '</div>' +
+    '<div class="mant-pie">' +
+    '<input type="text" class="form-control form-control-sm mant-nuevo" data-k="' + c.k + '" placeholder="Nombre">' +
+    '<button type="button" class="btn btn-sm btn-rc-outline mant-add" data-k="' + c.k + '">Agregar</button>' +
+    '</div></div></div>';
+}
+
+function pintarCardsMant() {
+  $('mant-cards').innerHTML = CAMPOS_MANT.map(tarjetaMantHtml).join('');
+}
+
+function mensajeMant(texto, esError) {
+  var msg = $('mant-msg');
+  msg.className = esError ? 'msg-error' : '';
+  msg.textContent = texto;
+}
 
 function cargarEditorMantenedor() {
-  CAMPOS_MANT.forEach(function (par) { $(par[0]).value = (LISTAS[par[1]] || []).join('\n'); });
+  copiarItemsMant();
+  pintarCardsMant();
+  mensajeMant('', false);
+}
+
+function agregarValorMant(k) {
+  var input = $('mant-cards').querySelector('.mant-nuevo[data-k="' + k + '"]');
+  var valor = input ? input.value.trim() : '';
+  if (!valor) return;
+  var lista = MANT_ITEMS[k];
+  if (lista.some(function (it) { return it.valor.toLowerCase() === valor.toLowerCase(); })) {
+    mensajeMant('"' + valor + '" ya está en esta lista.', true);
+    return;
+  }
+  lista.push({ valor: valor, activa: true });
+  pintarCardsMant();
+  mensajeMant('', false);
+}
+
+function montarCardsMant() {
+  $('mant-cards').addEventListener('change', function (e) {
+    if (!e.target.classList.contains('mant-act')) return;
+    MANT_ITEMS[e.target.getAttribute('data-k')][Number(e.target.getAttribute('data-i'))].activa = e.target.checked;
+    pintarCardsMant();
+  });
+  $('mant-cards').addEventListener('click', function (e) {
+    var b = e.target.closest('.mant-add');
+    if (b) agregarValorMant(b.getAttribute('data-k'));
+  });
+  $('mant-cards').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target.classList.contains('mant-nuevo')) {
+      e.preventDefault();
+      agregarValorMant(e.target.getAttribute('data-k'));
+    }
+  });
 }
 
 function entrarMantenedor() {
@@ -1032,19 +1114,19 @@ function entrarMantenedor() {
 
 function guardarMantenedor() {
   var listas = {};
-  CAMPOS_MANT.forEach(function (par) {
-    listas[par[1]] = $(par[0]).value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
-  });
-  var msg = $('mant-msg');
+  CAMPOS_MANT.forEach(function (c) { listas[c.k] = MANT_ITEMS[c.k]; });
   $('mant-guardar').disabled = true;
-  msg.className = ''; msg.textContent = 'Guardando...';
+  mensajeMant('Guardando...', false);
   llamarPost({ action: 'guardarMantenedor', clave: claveActual, listas: listas }).then(function (r) {
     if (!r.ok) throw new Error(r.error);
     return cargarListas().then(function () {
-      msg.className = 'msg-ok'; msg.textContent = 'Mantenedor guardado.';
+      copiarItemsMant();
+      pintarCardsMant();
+      mensajeMant('Cambios guardados.', false);
+      $('mant-msg').className = 'msg-ok';
     });
   }).catch(function (e) {
-    msg.className = 'msg-error'; msg.textContent = 'No se guardó: ' + e.message;
+    mensajeMant('No se guardó: ' + e.message, true);
   }).then(function () {
     $('mant-guardar').disabled = false;
   });
@@ -1112,6 +1194,7 @@ function iniciar() {
   $('mant-entrar').addEventListener('click', entrarMantenedor);
   $('mant-clave').addEventListener('keydown', function (e) { if (e.key === 'Enter') entrarMantenedor(); });
   $('mant-guardar').addEventListener('click', guardarMantenedor);
+  montarCardsMant();
   $('mb-agregar').addEventListener('click', function () {
     $('mb-filas').insertAdjacentHTML('beforeend', filaBodegaHtml({ largo: '', diametro: '', bodega: '' }));
   });
