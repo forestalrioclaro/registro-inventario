@@ -87,7 +87,7 @@
   <div id="contenedor-vistas"></div>
 
   <section id="vista-resumen" class="card-rc" hidden>
-    <h2>Resumen</h2>
+    <h2>Consolidación</h2>
     <div class="row g-3 align-items-end">
       <div class="col-sm-6 col-md-4 col-xl-3"><label class="form-label" for="res-periodo">Inventario (mes)</label><select class="form-select" id="res-periodo"></select></div>
       <div class="col-auto"><button class="btn btn-rc" id="res-ver">Ver</button></div>
@@ -95,6 +95,23 @@
     <div id="res-totales" class="mt-3"></div>
     <h3>Detalle</h3>
     <div class="table-responsive border rounded"><table class="table table-sm table-striped historial mb-0" id="res-tabla"></table></div>
+  </section>
+  <section id="vista-resumen-td" class="card-rc" hidden>
+    <h2>Resumen</h2>
+    <div class="row g-3 align-items-end">
+      <div class="col-sm-6 col-md-4 col-xl-3"><label class="form-label" for="rtd-periodo">Inventario (mes)</label><select class="form-select" id="rtd-periodo"></select></div>
+      <div class="col-auto"><button class="btn btn-rc" id="rtd-ver">Ver</button></div>
+      <div class="col-auto"><span id="rtd-msg" class="small text-secondary"></span></div>
+    </div>
+    <div class="row g-2 mt-1">
+      <div class="col-6 col-md-4 col-xl-2"><label class="form-label" for="rtd-f-tipo">Tipo</label><select class="form-select form-select-sm" id="rtd-f-tipo"></select></div>
+      <div class="col-6 col-md-4 col-xl-2"><label class="form-label" for="rtd-f-jefe">Jefe de área</label><select class="form-select form-select-sm" id="rtd-f-jefe"></select></div>
+      <div class="col-6 col-md-4 col-xl-2"><label class="form-label" for="rtd-f-clase">Clase</label><select class="form-select form-select-sm" id="rtd-f-clase"></select></div>
+      <div class="col-6 col-md-4 col-xl-2"><label class="form-label" for="rtd-f-largo">Largo</label><select class="form-select form-select-sm" id="rtd-f-largo"></select></div>
+      <div class="col-6 col-md-4 col-xl-2"><label class="form-label" for="rtd-f-diam">Diámetro</label><select class="form-select form-select-sm" id="rtd-f-diam"></select></div>
+      <div class="col-6 col-md-4 col-xl-2"><label class="form-label" for="rtd-f-bodega">Bodega</label><select class="form-select form-select-sm" id="rtd-f-bodega"></select></div>
+    </div>
+    <div class="table-responsive border rounded mt-3"><table class="table table-sm table-bordered mb-0" id="rtd-tabla"></table></div>
   </section>
 
   <section id="vista-mantenedor" class="card-rc" hidden>
@@ -666,9 +683,168 @@ function cargarRegistrosVista(v) {
   }).then(ocultarOverlay, ocultarOverlay);
 }
 
+/* ==== RESUMEN (TABLA DINAMICA) ==== */
+var TIPOS_TD = ['RCC', 'RC', 'RCI', 'RD', 'RDI'];
+var FILTROS_RTD = [
+  { id: 'rtd-f-tipo', campo: 'producto', todos: 'Todos los tipos' },
+  { id: 'rtd-f-jefe', campo: 'jefe', todos: 'Todos los jefes' },
+  { id: 'rtd-f-clase', campo: 'clase', todos: 'Todas las clases' },
+  { id: 'rtd-f-largo', campo: 'largo', todos: 'Todos los largos' },
+  { id: 'rtd-f-diam', campo: 'diametro', todos: 'Todos los diámetros' },
+  { id: 'rtd-f-bodega', campo: 'bodega', todos: 'Todas las bodegas' }
+];
+var RTD_DATOS = [];
+var RTD_BODEGAS = {};
+
+function limpiarClaseRTD(v) {
+  var t = String(v === null || v === undefined ? '' : v).trim();
+  return /^sin clase$/i.test(t) ? '' : t;
+}
+
+function normLargoRTD(v) {
+  return String(v === null || v === undefined ? '' : v).trim().replace('.', ',');
+}
+
+function numeroLargoRTD(v) {
+  return parseFloat(String(v).replace(',', '.')) || 0;
+}
+
+function filaRTD(f) {
+  var largo = normLargoRTD(f[16]);
+  var diam = String(f[17] === null || f[17] === undefined ? '' : f[17]).trim() || 'Sin diametro';
+  return {
+    vista: String(f[1] || ''),
+    jefe: String(f[3] || '').trim(),
+    producto: String(f[14] || '').trim().toUpperCase(),
+    clase: limpiarClaseRTD(f[15]),
+    largo: largo,
+    diametro: diam,
+    valor: (Number(f[18]) || 0) + (Number(f[19]) || 0),
+    bodega: RTD_BODEGAS[largo + ' x ' + diam] || 'Sin Bodega'
+  };
+}
+
+function cargarBodegasRTD() {
+  RTD_BODEGAS = {};
+  (LISTAS.bodegas || []).forEach(function (b) { RTD_BODEGAS[b.largo + ' x ' + b.diametro] = b.bodega; });
+}
+
+function cargarPeriodosRTD() {
+  var sel = $('rtd-periodo');
+  return llamarGet({ action: 'periodos' }).then(function (r) {
+    if (!r.ok) throw new Error(r.error);
+    var anterior = sel.value;
+    sel.innerHTML = r.periodos.map(function (p) {
+      return '<option value="' + esc(p) + '">' + esc(nombrePeriodo(p)) + '</option>';
+    }).join('') || '<option value="">Sin inventarios aún</option>';
+    if (anterior && r.periodos.indexOf(anterior) >= 0) sel.value = anterior;
+  });
+}
+
+function opcionesFiltroRTD(f) {
+  var vals = [];
+  RTD_DATOS.forEach(function (d) { if (vals.indexOf(d[f.campo]) < 0) vals.push(d[f.campo]); });
+  if (f.campo === 'producto') vals = TIPOS_TD.filter(function (t) { return true; });
+  else if (f.campo === 'largo') vals.sort(function (a, b) { return numeroLargoRTD(a) - numeroLargoRTD(b); });
+  else vals.sort(function (a, b) { return String(a).localeCompare(String(b), 'es'); });
+  var html = '<option value="*">' + esc(f.todos) + '</option>';
+  vals.forEach(function (v) {
+    var etiqueta = (f.campo === 'clase' && v === '') ? 'Sin clase' : v;
+    html += '<option value="' + esc(v) + '">' + esc(etiqueta) + '</option>';
+  });
+  return html;
+}
+
+function llenarFiltrosRTD() {
+  FILTROS_RTD.forEach(function (f) {
+    var sel = $(f.id);
+    var anterior = sel.value;
+    sel.innerHTML = opcionesFiltroRTD(f);
+    sel.value = Array.prototype.some.call(sel.options, function (o) { return o.value === anterior; }) ? anterior : '*';
+  });
+}
+
+function pasaFiltrosRTD(d) {
+  return FILTROS_RTD.every(function (f) {
+    var sel = $(f.id).value;
+    return sel === '*' || String(d[f.campo]) === sel;
+  });
+}
+
+function fmtRTD(v) {
+  return Math.round(v).toLocaleString('es-CL');
+}
+
+function pintarResumenTD() {
+  var datos = RTD_DATOS.filter(pasaFiltrosRTD);
+  var tipoSel = $('rtd-f-tipo').value;
+  var cols = tipoSel === '*' ? TIPOS_TD : [tipoSel];
+  var grupos = {}, lista = [];
+  datos.forEach(function (d) {
+    var etiqueta = d.producto + (d.clase ? ' ' + d.clase.toUpperCase() : '');
+    var clave = etiqueta + '|' + d.largo + '|' + d.diametro + '|' + d.bodega;
+    if (!grupos[clave]) {
+      grupos[clave] = { etiqueta: etiqueta, clase: d.clase, producto: d.producto, largo: d.largo, diametro: d.diametro, bodega: d.bodega, vals: {} };
+      lista.push(grupos[clave]);
+    }
+    grupos[clave].vals[d.producto] = (grupos[clave].vals[d.producto] || 0) + d.valor;
+  });
+  lista.sort(function (a, b) {
+    var pa = TIPOS_TD.indexOf(a.producto), pb = TIPOS_TD.indexOf(b.producto);
+    if (pa !== pb) return pa - pb;
+    if (a.clase !== b.clase) return a.clase.localeCompare(b.clase, 'es');
+    if (numeroLargoRTD(a.largo) !== numeroLargoRTD(b.largo)) return numeroLargoRTD(a.largo) - numeroLargoRTD(b.largo);
+    return a.diametro.localeCompare(b.diametro, 'es');
+  });
+
+  var cab = '<th>Producto / Clase</th><th>Largo</th><th>Diámetro</th><th>Bodega</th>' +
+    cols.map(function (c) { return '<th class="text-end">' + esc(c) + '</th>'; }).join('') +
+    '<th class="text-end">Total</th>';
+  var totCol = {}, totGeneral = 0;
+  cols.forEach(function (c) { totCol[c] = 0; });
+  var cuerpo = lista.map(function (g) {
+    var fila = '<td>' + esc(g.etiqueta) + '</td><td>' + esc(g.largo) + '</td><td>' + esc(g.diametro) + '</td><td>' + esc(g.bodega) + '</td>';
+    var suma = 0;
+    cols.forEach(function (c) {
+      var v = g.vals[c];
+      if (v) { totCol[c] += v; suma += v; fila += '<td class="text-end">' + fmtRTD(v) + '</td>'; }
+      else { fila += '<td></td>'; }
+    });
+    totGeneral += suma;
+    return '<tr>' + fila + '<td class="text-end fw-bold">' + fmtRTD(suma) + '</td></tr>';
+  }).join('');
+  var pie = '<td colspan="4" class="fw-bold">Total</td>' +
+    cols.map(function (c) { return '<td class="text-end fw-bold">' + fmtRTD(totCol[c]) + '</td>'; }).join('') +
+    '<td class="text-end fw-bold">' + fmtRTD(totGeneral) + '</td>';
+  $('rtd-tabla').innerHTML = '<thead><tr>' + cab + '</tr></thead>' +
+    '<tbody>' + (cuerpo || '<tr><td colspan="' + (5 + cols.length) + '">Sin registros con estos filtros.</td></tr>') + '</tbody>' +
+    (cuerpo ? '<tfoot><tr>' + pie + '</tr></tfoot>' : '');
+}
+
+function cargarResumenTD() {
+  var periodo = $('rtd-periodo').value;
+  if (!periodo) {
+    $('rtd-msg').textContent = 'Sin inventarios registrados aún.';
+    $('rtd-tabla').innerHTML = '';
+    return Promise.resolve();
+  }
+  $('rtd-msg').textContent = 'Cargando...';
+  return llamarGet({ action: 'registros', periodo: periodo }).then(function (r) {
+    if (!r.ok) throw new Error(r.error);
+    cargarBodegasRTD();
+    RTD_DATOS = r.rows.map(filaRTD);
+    llenarFiltrosRTD();
+    pintarResumenTD();
+    $('rtd-msg').textContent = RTD_DATOS.length + ' líneas · ' + nombrePeriodo(periodo);
+  }).catch(function (e) {
+    $('rtd-msg').textContent = 'No se pudo cargar: ' + e.message;
+  });
+}
+
 /* ==== NAVEGACION ==== */
 var SECCIONES = VISTAS.map(function (v) { return { id: 'vista-' + v.id, nombre: v.nombre }; });
-SECCIONES.push({ id: 'vista-resumen', nombre: 'Resumen' });
+SECCIONES.push({ id: 'vista-resumen', nombre: 'Consolidación' });
+SECCIONES.push({ id: 'vista-resumen-td', nombre: 'Resumen' });
 SECCIONES.push({ id: 'vista-mantenedor', nombre: 'Mantenedor' });
 
 function mostrarSeccion(id) {
@@ -680,6 +856,7 @@ function mostrarSeccion(id) {
   var v = VISTAS.filter(function (x) { return 'vista-' + x.id === id; })[0];
   if (v) cargarRegistrosVista(v);
   if (id === 'vista-resumen') cargarPeriodos().then(cargarResumen).catch(function (e) { mostrarAviso(e.message); });
+  if (id === 'vista-resumen-td') cargarPeriodosRTD().then(cargarResumenTD).catch(function (e) { mostrarAviso(e.message); });
 }
 
 function montarNav() {
@@ -785,6 +962,9 @@ function iniciar() {
   montarVistas();
   $('res-ver').addEventListener('click', cargarResumen);
   $('res-periodo').addEventListener('change', cargarResumen);
+  $('rtd-ver').addEventListener('click', cargarResumenTD);
+  $('rtd-periodo').addEventListener('change', cargarResumenTD);
+  FILTROS_RTD.forEach(function (f) { $(f.id).addEventListener('change', pintarResumenTD); });
   $('mant-entrar').addEventListener('click', entrarMantenedor);
   $('mant-clave').addEventListener('keydown', function (e) { if (e.key === 'Enter') entrarMantenedor(); });
   $('mant-guardar').addEventListener('click', guardarMantenedor);
