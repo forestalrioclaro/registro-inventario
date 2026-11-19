@@ -64,6 +64,10 @@
   .tabla-bd .form-control, .tabla-bd .form-select { font-size: 12px; padding: 3px 5px; border-color: transparent; background-color: transparent; }
   .tabla-bd .form-control:focus, .tabla-bd .form-select:focus { background-color: #f3fbf6; border-color: var(--rc-verde); }
   .tabla-bd tr.fila-cambiada td { background: #fff8e1; }
+  #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+  .overlay-caja { background: #fff; border-top: 4px solid var(--rc-verde); border-radius: 10px; padding: 22px 30px; min-width: 260px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-family: 'Raleway', sans-serif; font-weight: 700; color: #333; }
+  .spinner { width: 36px; height: 36px; margin: 0 auto 12px; border: 4px solid #e2e4e6; border-top-color: var(--rc-verde); border-radius: 50%; animation: girar .8s linear infinite; }
+  @keyframes girar { to { transform: rotate(360deg); } }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -126,6 +130,8 @@
 
   <div class="pie">Río Claro Postes Impregnados · <b>forestalrioclaro.cl</b></div>
 </main>
+
+<div id="overlay" hidden><div class="overlay-caja"><div class="spinner"></div><div id="overlay-texto">Cargando…</div></div></div>
 
 <datalist id="dl-jefes"></datalist>
 
@@ -286,6 +292,7 @@ function htmlVista(v) {
   '    <div class="grid-trab">' + trab + '</div>' +
   '  </details>' +
   '  <h3>Conteo</h3>' +
+  '  <p id="' + p + 'bd-estado" class="small mb-2" style="color:#898A8D;font-weight:700;">Elige un mes para ver los registros.</p>' +
   '  <div class="table-responsive border rounded">' +
   '    <table class="table table-sm table-bordered tabla-conteo mb-0"><thead><tr>' + cab + '</tr></thead>' +
   '    <tbody id="' + p + 'filas">' + filas + '</tbody></table>' +
@@ -294,18 +301,6 @@ function htmlVista(v) {
   '    <button class="btn btn-rc-outline btn-sm" id="' + p + 'agregar">Agregar ' + FILAS_NUEVAS + ' filas</button>' +
   '    <button class="btn btn-rc" id="' + p + 'btn">Guardar filas</button>' +
   '    <span id="' + p + 'msg" class="ms-2"></span>' +
-  '  </div>' +
-  '  <h3>Registros guardados en la BD</h3>' +
-  '  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">' +
-  '    <button class="btn btn-rc-outline btn-sm" id="' + p + 'bd-recargar">Recargar</button>' +
-  '    <button class="btn btn-rc btn-sm" id="' + p + 'bd-guardar">Guardar cambios</button>' +
-  '    <span id="' + p + 'bd-contador" class="small text-secondary"></span>' +
-  '  </div>' +
-  '  <p id="' + p + 'bd-estado" class="small mb-2" style="color:#898A8D;font-weight:700;">Elige un mes para ver los registros.</p>' +
-  '  <div class="table-responsive border rounded">' +
-  '    <table class="table table-sm table-bordered tabla-bd mb-0"><thead><tr>' +
-  '    <th>Nº fila</th>' + CAMPOS_BD.map(function (c) { return '<th>' + esc(c.t) + '</th>'; }).join('') +
-  '    </tr></thead><tbody id="' + p + 'bd-tbody"></tbody></table>' +
   '  </div>' +
   '</section>';
 }
@@ -373,51 +368,70 @@ function filaValida(datos) {
 }
 
 function guardarFilas(v) {
-  var msg = $(v.id + '-msg'), btn = $(v.id + '-btn');
+  var p = v.id + '-';
+  var msg = $(p + 'msg'), btn = $(p + 'btn');
   var cab = leerCabecera(v);
-  var filas = leerFilas(v.id).filter(function (f) { return !f.vacia; });
   msg.className = 'ms-2'; msg.textContent = '';
-
-  if (!cab.periodo || !cab.jefe) {
-    msg.className = 'ms-2 msg-error';
-    msg.textContent = 'Falta el mes de inventario o el jefe de área.';
-    return;
-  }
-  if (filas.length === 0) {
-    msg.className = 'ms-2 msg-error';
-    msg.textContent = 'No hay filas con datos para guardar.';
-    return;
-  }
-  var malas = filas.filter(function (f) { return !filaValida(f.datos); }).map(function (f) { return f.n; });
+  var cambios = [], nuevas = [], malas = [];
+  Array.prototype.forEach.call($(p + 'filas').querySelectorAll('tr'), function (tr) {
+    var d = valoresDeFila(tr);
+    var numero = tr.querySelector('td.num').textContent;
+    if (tr.dataset.fila) {
+      if (JSON.stringify(d) === tr.dataset.orig) return;
+      if (!filaValida(d)) malas.push(numero); else cambios.push({ tr: tr, d: d });
+    } else if (CAMPOS_REG.some(function (c) { return d[c] !== ''; })) {
+      if (!filaValida(d)) malas.push(numero); else nuevas.push({ tr: tr, d: d });
+    }
+  });
   if (malas.length) {
     msg.className = 'ms-2 msg-error';
     msg.textContent = 'Revisa las filas ' + malas.join(', ') + ': necesitan producto y al menos una cantidad.';
     return;
   }
+  if (!cambios.length && !nuevas.length) {
+    msg.className = 'ms-2 msg-error';
+    msg.textContent = 'No hay cambios ni filas nuevas para guardar.';
+    return;
+  }
+  if (nuevas.length && (!cab.periodo || !cab.jefe)) {
+    msg.className = 'ms-2 msg-error';
+    msg.textContent = 'Para filas nuevas falta el mes de inventario o el jefe de área.';
+    return;
+  }
+
+  var tareas = [];
+  cambios.forEach(function (c) {
+    tareas.push({ accion: 'actualizar', fila: c.tr.dataset.fila, data: Object.assign({ vista: cab.vista, periodo: c.tr.dataset.periodo, jefe: c.tr.dataset.jefe, trabajadores: JSON.parse(c.tr.dataset.trab) }, c.d) });
+  });
+  nuevas.forEach(function (n) {
+    tareas.push({ accion: 'registrar', data: Object.assign({ vista: cab.vista, periodo: cab.periodo, jefe: cab.jefe, trabajadores: cab.trabajadores }, n.d) });
+  });
 
   btn.disabled = true;
-  var guardadas = 0;
-  function siguiente(i) {
-    if (i >= filas.length) {
-      msg.className = 'ms-2 msg-ok';
-      msg.textContent = 'Se guardaron ' + guardadas + ' filas.';
-      btn.disabled = false;
-      cargarRegistrosVista(v);
-      return Promise.resolve();
-    }
-    var f = filas[i];
-    var data = Object.assign({}, cab, f.datos, { trabajadores: cab.trabajadores });
-    return llamarPost({ action: 'registrar', data: data }).then(function (r) {
-      if (!r.ok) throw new Error('fila ' + f.n + ': ' + r.error);
-      guardadas++;
-      limpiarFila(f.tr);
-      return siguiente(i + 1);
+  var hechos = 0;
+  function paso(i) {
+    if (i >= tareas.length) return Promise.resolve();
+    mostrarOverlay('Guardando en la BD… ' + (i + 1) + ' de ' + tareas.length);
+    var t = tareas[i];
+    return llamarPost({ action: t.accion, fila: t.fila, data: t.data }).then(function (r) {
+      if (!r.ok) throw new Error(r.error);
+      hechos++;
+      return paso(i + 1);
     });
   }
-  siguiente(0).catch(function (e) {
+  paso(0).then(function () {
+    return cargarRegistrosVista(v).then(function () {
+      msg.className = 'ms-2 msg-ok';
+      msg.textContent = 'Se guardaron ' + hechos + ' de ' + tareas.length + ' cambios.';
+    });
+  }).catch(function (e) {
+    ocultarOverlay();
     msg.className = 'ms-2 msg-error';
-    msg.textContent = 'Se guardaron ' + guardadas + ' filas. Error en ' + e.message;
+    msg.textContent = 'Se guardaron ' + hechos + ' de ' + tareas.length + '. Error: ' + e.message;
+    cargarRegistrosVista(v);
+  }).then(function () {
     btn.disabled = false;
+    ocultarOverlay();
   });
 }
 
@@ -498,156 +512,82 @@ function montarVistas() {
       if (e.target.classList.contains('c-producto')) actualizarDiamFila(e.target.closest('tr'));
     });
     $(p + 'fecha').addEventListener('change', function () { cargarRegistrosVista(v); });
-    $(p + 'bd-recargar').addEventListener('click', function () { cargarRegistrosVista(v); });
-    $(p + 'bd-guardar').addEventListener('click', function () { guardarBd(v); });
-    $(p + 'bd-tbody').addEventListener('input', function (e) { marcarCambioBd(v, e.target.closest('tr')); });
-    $(p + 'bd-tbody').addEventListener('change', function (e) { marcarCambioBd(v, e.target.closest('tr')); });
+    $(p + 'filas').addEventListener('input', function (e) { marcarFila(e.target.closest('tr')); });
+    $(p + 'filas').addEventListener('change', function (e) { marcarFila(e.target.closest('tr')); });
   });
 }
 
-/* ==== REGISTROS GUARDADOS EN LA BD ==== */
-var CAMPOS_BD = [
-  { c: 'jefe', t: 'Jefe', tipo: 'jefe' },
-  { c: 'producto', t: 'Producto', tipo: 'sel', lista: 'productos' },
-  { c: 'clase', t: 'Clase', tipo: 'sel', lista: 'clases' },
-  { c: 'largo', t: 'Largo', tipo: 'sel', lista: 'largos' },
-  { c: 'diametro', t: 'Diámetro', tipo: 'txt' },
-  { c: 'produccion', t: 'Producción', tipo: 'num' },
-  { c: 'recuperacion', t: 'Recuperación', tipo: 'num' },
-  { c: 'rechazo', t: 'Rechazo', tipo: 'num' },
-  { c: 'secado', t: 'Secado', tipo: 'sel', lista: 'secado' },
-  { c: 'sector', t: 'Sector', tipo: 'txt' },
-  { c: 'comentario', t: 'Comentario', tipo: 'txt' }
-];
+/* ==== REGISTROS EN LA TABLA DE CONTEO (BD) ==== */
+var CAMPOS_REG = ['producto', 'clase', 'largo', 'diametro', 'secado', 'produccion', 'recuperacion', 'rechazo', 'sector', 'comentario'];
 
-var BD = {};
+function mostrarOverlay(texto) { $('overlay-texto').textContent = texto; $('overlay').hidden = false; }
+function ocultarOverlay() { $('overlay').hidden = true; }
 
-function estadoBd(v, texto, error) {
+function estadoVista(v, texto, error) {
   var e = $(v.id + '-bd-estado');
   e.textContent = texto;
   e.style.color = error ? 'var(--rc-rojo)' : '#898A8D';
 }
 
-function contadorBd(v) {
-  var n = $(v.id + '-bd-tbody').querySelectorAll('tr.fila-cambiada').length;
-  $(v.id + '-bd-contador').textContent = n ? n + ' cambio(s) sin guardar' : '';
-}
-
-function celdaBd(camp, valorCelda) {
-  var v = valorCelda === undefined || valorCelda === null ? '' : String(valorCelda);
-  var attrs = ' class="' + (camp.tipo === 'sel' ? 'form-select' : 'form-control') + ' form-control-sm bd-campo" data-c="' + camp.c + '"';
-  if (camp.tipo === 'sel') {
-    var lista = (LISTAS[camp.lista] || []).slice();
-    if (v && lista.indexOf(v) < 0) lista.push(v);
-    return '<select' + attrs + '><option value=""></option>' + lista.map(function (o) {
-      return '<option value="' + esc(o) + '"' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>';
-    }).join('') + '</select>';
-  }
-  if (camp.tipo === 'num') return '<input type="number" min="0" step="1"' + attrs + ' value="' + esc(v) + '">';
-  if (camp.tipo === 'jefe') return '<input type="text" list="dl-jefes"' + attrs + ' value="' + esc(v) + '">';
-  return '<input type="text"' + attrs + ' value="' + esc(v) + '">';
-}
-
-function camposDe(reg) {
+function valoresDeFila(tr) {
   var d = {};
-  CAMPOS_BD.forEach(function (camp) {
-    d[camp.c] = reg[camp.c] === undefined || reg[camp.c] === null ? '' : String(reg[camp.c]);
-  });
+  CAMPOS_REG.forEach(function (c) { d[c] = valorFila(tr, c); });
   return d;
 }
 
-function leerFilaBd(tr) {
+function valoresDeReg(reg) {
   var d = {};
-  CAMPOS_BD.forEach(function (camp) {
-    var el = tr.querySelector('[data-c="' + camp.c + '"]');
-    d[camp.c] = el ? (el.value || '').trim() : '';
-  });
+  CAMPOS_REG.forEach(function (c) { d[c] = reg[c] === undefined || reg[c] === null ? '' : String(reg[c]); });
   return d;
 }
 
-function renderBd(v, filas) {
-  BD[v.id] = { filas: filas, orig: {} };
-  $(v.id + '-bd-tbody').innerHTML = filas.map(function (reg) {
-    BD[v.id].orig[reg.fila] = JSON.stringify(camposDe(reg));
-    return '<tr data-fila="' + reg.fila + '"><td class="num">' + reg.fila + '</td>' +
-      CAMPOS_BD.map(function (camp) { return '<td>' + celdaBd(camp, reg[camp.c]) + '</td>'; }).join('') + '</tr>';
-  }).join('');
-  contadorBd(v);
+function ponerValores(tr, reg) {
+  var d = valoresDeReg(reg);
+  CAMPOS_REG.forEach(function (c) {
+    var el = tr.querySelector('.c-' + c);
+    if (!el) return;
+    if (el.tagName === 'SELECT' && d[c] && !Array.prototype.some.call(el.options, function (o) { return o.value === d[c]; })) {
+      el.insertAdjacentHTML('beforeend', '<option value="' + esc(d[c]) + '">' + esc(d[c]) + '</option>');
+    }
+    el.value = d[c];
+  });
 }
 
-function marcarCambioBd(v, tr) {
-  if (!tr || !tr.dataset.fila || !BD[v.id]) return;
-  var cambiada = JSON.stringify(leerFilaBd(tr)) !== BD[v.id].orig[tr.dataset.fila];
-  tr.classList.toggle('fila-cambiada', cambiada);
-  contadorBd(v);
+function marcarFila(tr) {
+  if (!tr || !tr.dataset.fila) return;
+  tr.classList.toggle('fila-cambiada', JSON.stringify(valoresDeFila(tr)) !== tr.dataset.orig);
 }
 
 function cargarRegistrosVista(v) {
-  var periodo = valor(v.id + '-fecha');
-  if (!periodo) { estadoBd(v, 'Elige un mes para ver los registros.'); return Promise.resolve(); }
-  estadoBd(v, 'Leyendo BD…');
+  var p = v.id + '-';
+  var periodo = valor(p + 'fecha');
+  var tbody = $(p + 'filas');
+  if (!periodo) { estadoVista(v, 'Elige un mes para ver los registros.'); return Promise.resolve(); }
+  mostrarOverlay('Cargando registros de la BD…');
   return llamarGet({ action: 'registrosVista', periodo: periodo, vista: v.nombre }).then(function (r) {
     if (!r.ok) throw new Error(r.error);
-    if (valor(v.id + '-fecha') !== periodo) return;
-    renderBd(v, r.rows);
-    estadoBd(v, r.rows.length
-      ? 'Se leyeron ' + r.rows.length + ' líneas de ' + v.nombre + ' · ' + nombrePeriodo(periodo) + '.'
-      : 'No hay líneas guardadas de ' + v.nombre + ' para ' + nombrePeriodo(periodo) + '.');
+    if (valor(p + 'fecha') !== periodo) return;
+    contadorFilas[v.id] = 0;
+    tbody.innerHTML = '';
+    r.rows.forEach(function (reg) {
+      contadorFilas[v.id]++;
+      tbody.insertAdjacentHTML('beforeend', filaHtml(v.id, contadorFilas[v.id]));
+      var tr = tbody.lastElementChild;
+      tr.dataset.fila = reg.fila;
+      tr.dataset.periodo = reg.periodo;
+      tr.dataset.jefe = reg.jefe;
+      tr.dataset.trab = JSON.stringify(reg.trabajadores);
+      tr.dataset.orig = JSON.stringify(valoresDeReg(reg));
+      ponerValores(tr, reg);
+      actualizarDiamFila(tr);
+    });
+    agregarFilas(v.id, FILAS_NUEVAS);
+    estadoVista(v, r.rows.length
+      ? 'Se leyeron ' + r.rows.length + ' líneas guardadas de ' + v.nombre + ' · ' + nombrePeriodo(periodo) + '. Puedes editarlas y agregar filas nuevas.'
+      : 'No hay líneas guardadas de ' + v.nombre + ' para ' + nombrePeriodo(periodo) + '. Ingresa filas nuevas abajo.');
   }).catch(function (e) {
-    estadoBd(v, 'No se pudo leer la BD: ' + e.message, true);
-  });
-}
-
-function guardarBd(v) {
-  var tbody = $(v.id + '-bd-tbody');
-  var trs = tbody.querySelectorAll('tr.fila-cambiada');
-  if (!trs.length) { estadoBd(v, 'No hay cambios para guardar.'); return; }
-
-  var entradas = [];
-  var malas = [];
-  for (var i = 0; i < trs.length; i++) {
-    var fila = trs[i].dataset.fila;
-    var reg = BD[v.id].filas.filter(function (r) { return String(r.fila) === String(fila); })[0];
-    var campos = leerFilaBd(trs[i]);
-    var unidades = [campos.produccion, campos.recuperacion, campos.rechazo];
-    if (!campos.producto || !unidades.some(function (u) { return u !== '' && Number(u) > 0; })) malas.push(fila);
-    entradas.push({ reg: reg, campos: campos });
-  }
-  if (malas.length) {
-    estadoBd(v, 'Revisa las líneas ' + malas.join(', ') + ': necesitan producto y al menos una cantidad.', true);
-    return;
-  }
-
-  var btn = $(v.id + '-bd-guardar');
-  btn.disabled = true;
-  var hechos = 0;
-  function siguiente(k) {
-    if (k >= entradas.length) {
-      btn.disabled = false;
-      return cargarRegistrosVista(v).then(function () {
-        estadoBd(v, 'Se guardaron ' + hechos + ' cambios en la BD.');
-      });
-    }
-    var reg = entradas[k].reg, c = entradas[k].campos;
-    estadoBd(v, 'Guardando BD… ' + (k + 1) + ' de ' + entradas.length);
-    var data = {
-      vista: reg.vista, periodo: reg.periodo, jefe: c.jefe, trabajadores: reg.trabajadores,
-      producto: c.producto, clase: c.clase, largo: c.largo, diametro: c.diametro,
-      produccion: c.produccion, recuperacion: c.recuperacion, rechazo: c.rechazo,
-      secado: c.secado, sector: c.sector, comentario: c.comentario
-    };
-    return llamarPost({ action: 'actualizar', fila: reg.fila, data: data }).then(function (r) {
-      if (!r.ok) throw new Error('línea ' + reg.fila + ': ' + r.error);
-      hechos++;
-      return siguiente(k + 1);
-    });
-  }
-  siguiente(0).catch(function (e) {
-    btn.disabled = false;
-    cargarRegistrosVista(v).then(function () {
-      estadoBd(v, 'Se guardaron ' + hechos + ' cambios. Error: ' + e.message, true);
-    });
-  });
+    estadoVista(v, 'No se pudo leer la BD: ' + e.message, true);
+  }).then(ocultarOverlay, ocultarOverlay);
 }
 
 /* ==== NAVEGACION ==== */
