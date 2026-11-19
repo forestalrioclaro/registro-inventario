@@ -265,6 +265,7 @@ function filaHtml(vid, n) {
       h += '<td><input class="form-control form-control-sm ' + clase + '" type="text" autocomplete="off"></td>';
     }
   });
+  h += '<td class="text-center"><input class="form-check-input chk-fila" type="checkbox" aria-label="Seleccionar fila"></td>';
   h += '<td class="d-none"><datalist id="dl-d-' + id + '"></datalist></td></tr>';
   return h;
 }
@@ -276,7 +277,7 @@ function htmlVista(v) {
     var num = (i + 1 < 10 ? '0' : '') + (i + 1);
     trab += '<div><input class="form-control form-control-sm" id="' + p + 't' + i + '" placeholder="Trabajador ' + num + '"></div>';
   }
-  var cab = '<th>Nº</th>' + COLUMNAS_CARGA.map(function (c) { return '<th>' + esc(c.t) + '</th>'; }).join('');
+  var cab = '<th>Nº</th>' + COLUMNAS_CARGA.map(function (c) { return '<th>' + esc(c.t) + '</th>'; }).join('') + '<th class="text-center">Sel.</th>';
   var filas = '';
   for (var k = 1; k <= FILAS_INICIALES; k++) filas += filaHtml(v.id, k);
   contadorFilas[v.id] = FILAS_INICIALES;
@@ -291,7 +292,8 @@ function htmlVista(v) {
   '    <summary>Trabajadores que ayudaron a contar (ISO)</summary>' +
   '    <div class="grid-trab">' + trab + '</div>' +
   '  </details>' +
-  '  <h3>Conteo</h3>' +
+  '  <div class="d-flex align-items-center flex-wrap gap-3"><h3 class="mb-0">Conteo</h3>' +
+  '  <button type="button" class="btn btn-outline-danger btn-sm" id="' + p + 'eliminar" hidden></button></div>' +
   '  <p id="' + p + 'bd-estado" class="small mb-2" style="color:#898A8D;font-weight:700;">Elige un mes para ver los registros.</p>' +
   '  <div class="table-responsive border rounded">' +
   '    <table class="table table-sm table-bordered tabla-conteo mb-0"><thead><tr>' + cab + '</tr></thead>' +
@@ -365,6 +367,66 @@ function filaValida(datos) {
   if (!datos.producto) return false;
   var unidades = [datos.produccion, datos.recuperacion, datos.rechazo];
   return unidades.some(function (u) { return u !== '' && Number(u) > 0; });
+}
+
+function actualizarBotonEliminar(v) {
+  var p = v.id + '-';
+  var n = $(p + 'filas').querySelectorAll('.chk-fila:checked').length;
+  var b = $(p + 'eliminar');
+  b.hidden = n === 0;
+  b.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" style="vertical-align:-2px"><path d="M5.5 5.5a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1z"/></svg> Eliminar ' + n + (n === 1 ? ' fila' : ' filas');
+}
+
+function eliminarSeleccionadas(v) {
+  var p = v.id + '-';
+  var msg = $(p + 'msg'), btnEl = $(p + 'eliminar'), btnG = $(p + 'btn');
+  var seleccionadas = Array.prototype.filter.call($(p + 'filas').querySelectorAll('tr'), function (tr) {
+    var chk = tr.querySelector('.chk-fila');
+    return chk && chk.checked;
+  });
+  if (!seleccionadas.length) return;
+  var guardadas = seleccionadas.filter(function (tr) { return tr.dataset.fila; });
+  var otrosCambios = Array.prototype.filter.call($(p + 'filas').querySelectorAll('tr'), function (tr) {
+    if (seleccionadas.indexOf(tr) !== -1) return false;
+    if (tr.dataset.fila) return tr.classList.contains('fila-cambiada');
+    return CAMPOS_REG.some(function (c) { return valorFila(tr, c) !== ''; });
+  });
+
+  var texto = '¿De verdad deseas eliminar ' + seleccionadas.length + (seleccionadas.length === 1 ? ' fila seleccionada?' : ' filas seleccionadas?');
+  if (guardadas.length) texto += '\n\n' + guardadas.length + ' de ellas están guardadas en la BD y se borrarán definitivamente.';
+  if (otrosCambios.length) texto += '\n\nHay ' + otrosCambios.length + ' fila(s) con cambios sin guardar que se perderán al actualizar la tabla.';
+  texto += '\n\nEsta acción no se puede deshacer.';
+  if (!window.confirm(texto)) return;
+
+  if (!guardadas.length) {
+    seleccionadas.forEach(function (tr) { tr.remove(); });
+    actualizarBotonEliminar(v);
+    msg.className = 'ms-2 msg-ok';
+    msg.textContent = 'Se quitaron ' + seleccionadas.length + ' filas nuevas.';
+    return;
+  }
+
+  btnEl.disabled = true; btnG.disabled = true;
+  mostrarOverlay('Eliminando filas de la BD…');
+  llamarPost({
+    action: 'eliminar',
+    vista: v.nombre,
+    periodo: valor(p + 'fecha'),
+    filas: guardadas.map(function (tr) { return Number(tr.dataset.fila); })
+  }).then(function (r) {
+    if (!r.ok) throw new Error(r.error);
+    return cargarRegistrosVista(v).then(function () {
+      msg.className = 'ms-2 msg-ok';
+      msg.textContent = 'Se eliminaron ' + guardadas.length + ' filas de la BD.';
+    });
+  }).catch(function (e) {
+    msg.className = 'ms-2 msg-error';
+    msg.textContent = 'No se pudo eliminar: ' + e.message;
+  }).then(function () {
+    ocultarOverlay();
+    btnG.disabled = false;
+    actualizarBotonEliminar(v);
+  });
 }
 
 function guardarFilas(v) {
@@ -513,6 +575,8 @@ function montarVistas() {
     });
     $(p + 'fecha').addEventListener('change', function () { cargarRegistrosVista(v); });
     $(p + 'filas').addEventListener('input', function (e) { marcarFila(e.target.closest('tr')); });
+    $(p + 'filas').addEventListener('change', function (e) { if (e.target.classList.contains('chk-fila')) actualizarBotonEliminar(v); });
+    $(p + 'eliminar').addEventListener('click', function () { eliminarSeleccionadas(v); });
     $(p + 'filas').addEventListener('change', function (e) { marcarFila(e.target.closest('tr')); });
   });
 }
